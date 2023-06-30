@@ -1,5 +1,7 @@
 data = read.csv("vax_tweets_with_sentiment_entities_3.csv")
 
+data$entities <- tolower(data$entities)
+
 library(ggplot2)
 library(dplyr)
 library(tidyverse)
@@ -23,105 +25,61 @@ categories <- list(
   Masks = c("MaskUp", "WearAMask"),
   Miscellaneous = c("Please", "NOT", "WTF", "Sorry", "Hey", "Visit", "THE", "Book","NOT","Everyone", "Anyone", "Black", "COVID19nsw","COVIDãf¼19", "Get", "Sad", "Sorry", "WTF", "Hey", "Book", "Visit", "CovidVic")
 )
-                    
 
 
-
-categorize_named_entities <- function(named_entities) {
-  categorized_entities <- vector("list", length(named_entities))
-  
-  for (i in seq_along(named_entities)) {
-    entity_vector <- gsub("\\[|\\]|'|\"", "", named_entities[i])
-    entities <- strsplit(entity_vector, ",\\s*")[[1]]
-    
-    categorized_entity_list <- vector("character", length(entities))
-    
-    for (j in seq_along(entities)) {
-      entity_category <- trimws(entities[j])
-      entity <- ""
-      category <- "Undefined"
-      matched_category <- FALSE
-      
-      if (grepl("::", entity_category, ignore.case = TRUE)) {
-        parts <- strsplit(entity_category, "::")[[1]]
-        entity <- trimws(parts[1])
-        category <- trimws(parts[2])
-        
-        for (cat in names(categories)) {
-          if (category %in% categories[[cat]]) {
-            category <- cat
-            matched_category <- TRUE
-            break
-          }
-        }
-      } else {
-        entity <- entity_category
-      }
-      
-      if (!matched_category) {
-        for (cat in names(categories)) {
-          if (grepl(paste0("\\b", entity, "\\b"), categories[[cat]], ignore.case = TRUE)) {
-            category <- cat
-            matched_category <- TRUE
-            break
-          }
-        }
-      }
-      
-      categorized_entity_list[j] <- paste(entity, category, sep = "::")  # Combine entity and category
-    }
-    
-    categorized_entities[[i]] <- list(entities = categorized_entity_list)
-  }
-  
-  return(categorized_entities)
+# Convert categories to lowercase
+for (cat_name in names(categories)) {
+  categories[[cat_name]] <- tolower(categories[[cat_name]])
 }
 
 
-named_entities <- negative_data$entities
-categorized_entities <- categorize_named_entities(named_entities)
-categorize_named_entities("CovidVaccine")
+# Create an empty dataframe
+entity_category_df <- data.frame(Entity = character(), Category = character(), stringsAsFactors = FALSE)
 
-# Create a new data frame with named entities and categories
-categorized_data <- data.frame(do.call(rbind, categorized_entities), stringsAsFactors = FALSE)
+# Iterate over each row in your dataset
+for (row in 1:nrow(negative_data)) {
+  entities <- negative_data[row, "entities"]
+  
+  # Check if the row has any entities
+  if (entities != "[]") {
+    # Remove square brackets and split the string into individual entities
+    entities <- gsub("\\[|\\]|\'","", entities)
+    entities <- strsplit(entities, ", ")[[1]]
+    
+    # Remove leading and trailing whitespaces from each entity
+    entities <- trimws(entities)
+    
+    # Iterate over each entity
+    for (entity in entities) {
+      category <- NA  # Initialize category as NA
+      
+      # Check which category the entity belongs to
+      for (cat_name in names(categories)) {
+        if (entity %in% categories[[cat_name]]) {
+          category <- cat_name
+          break
+        }
+      }
+      
+      # Append the entity and category to the dataframe
+      entity_category_df <- rbind(entity_category_df, data.frame(Entity = entity, Category = category, stringsAsFactors = FALSE))
+    }
+  }
+}
 
-# Split the entities column into separate rows
-
-library(stringr)
-
-categorized_data <- categorized_data %>%
-  mutate(entities = ifelse(is.na(entities), "Undefined", entities)) %>%
-  mutate(entities = gsub("\\[|\\]|'|\"", "", entities)) %>%
-  separate_rows(entities, sep = ",") %>%
-  separate(entities, into = c("Entity", "Category"), sep = "::", extra = "merge") %>%
-  mutate(Entity = str_trim(Entity)) %>%
-  mutate(Category = ifelse(is.na(Category), "Undefined", str_trim(Category))) %>%
-  mutate(Category = str_remove(Category, "\\)$"))
-
-categorized_data <- categorized_data[complete.cases(categorized_data), ]
-
+# Replace NA values with "Undefined"
+entity_category_df$Category[is.na(entity_category_df$Category)] <- "Undefined"
 
 # Count the occurrences of each category
-category_counts <- categorized_data %>%
+category_counts <- entity_category_df %>%
   group_by(Category) %>%
   summarise(Count = n())
 
-
-# Add the "Undefined" category if there are undefined entities
-if (!any(category_counts$Category == "Undefined")) {
-  category_counts <- rbind(category_counts, data.frame(Category = "Undefined", Count = 0))
-}
-
-# Remove "c(" and ")" from the Entity column
-categorized_data$Entity <- gsub("^c\\(|\\)$", "", categorized_data$Entity)
-
-# Filter out rows with empty entities (character(0))
-categorized_data <- categorized_data[!(categorized_data$Entity == "character(0" | categorized_data$Entity == "character(0)"), ]
-
 # Count the entities
-entity_counts <- categorized_data %>%
+entity_counts <- entity_category_df %>%
   count(Entity, sort = TRUE) %>%
   head(10)  # Change the number as desired
+
 
 #Barplot of most common entities
 ggplot(entity_counts, aes(x = reorder(Entity, -n), y = n)) +
