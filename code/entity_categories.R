@@ -14,8 +14,8 @@ categories <- list(
   Locations = c("America", "USA","American", "UK", "NYC", "Europe", "India", "US", "U.S", "Chicago", "Canada", "Australia", "Florida", "Israel", "California", "Ontario", "Russia", "NYC", "London", "Delhi", "Pakistan",
                 "Japan", "Germany", "South Africa", "CovidUK", "Ireland", "US", "Indian", "USUN", "EU", "COVID19Aus", "IndiaFightsCorona", "Canadian", "Europe", "China", "Africa"),
   Symptoms = c("fever", "cough", "LongCovid", "ICU", "fatigue", "shortness of breath", "sore throat", "loss of taste", "headache", "long COVID", "ICU", "Health"),
-  COVID = c("COVID19", "COVID vaccine", "COVID", "Corona", "Covid19", "COVID-19", "Covaxin", "COVID-19 vaccine", "COVID-19 variants", "Delta variant", "Omicron variant", "COVID19", "COVID", "Covid", "Delta", "DELTA", "ALPHA", "Alpha", "alpha", "detla", "omicron", "OMICRON", "Omicron","DeltaVariant"),
-  Vaccination = c("COVID vaccine", "COVIDVACCINE", "COVID Vaccine", "VACCINE", "Chicago Vaccination", "Vaccine", "CovidVaccine", "COVIDvaccine", "COVIDVaccine", "BoosterJab", "Covaxin", "vaccine", "GetVaccinated", "booster shot", "get vaccinated", "vaccination", "BoosterJab", "COVID19Vic"),
+  COVID = c("COVID19", "COVID", "Corona", "Covid19", "COVID-19", "COVID-19 variants", "Delta variant", "Omicron variant", "COVID19", "COVID", "Covid", "Delta", "DELTA", "ALPHA", "Alpha", "alpha", "detla", "omicron", "OMICRON", "Omicron","DeltaVariant"),
+  Vaccination = c("COVID vaccine", "COVID vaccine", "COVIDVACCINE", "Covaxin", "COVID Vaccine", "COVID-19 vaccine", "VACCINE", "Chicago Vaccination", "Vaccine", "CovidVaccine", "COVIDvaccine", "COVIDVaccine", "BoosterJab", "Covaxin", "vaccine", "GetVaccinated", "booster shot", "get vaccinated", "vaccination", "BoosterJab", "COVID19Vic"),
   Politics = c("Trump", "Joe Biden", "JoeBiden", "Biden", "Boris Johnson", "POTUS", "MAGA", "TRUMP", "Johnson",  "Boris", "Don", "BorisJohnson"),
   Media = c("Fox News", "FoxNews"),
   Conspiracy = c("DrFauci", "Fauci", "Ivermectin", "ivermectin", "IVERMECTIN", "BillGates", "Secret", "mRNA", "EUA"),
@@ -42,7 +42,7 @@ categorize_named_entities <- function(named_entities) {
       category <- "Undefined"
       matched_category <- FALSE
       
-      if (grepl("::", entity_category)) {
+      if (grepl("::", entity_category, ignore.case = TRUE)) {
         parts <- strsplit(entity_category, "::")[[1]]
         entity <- trimws(parts[1])
         category <- trimws(parts[2])
@@ -80,7 +80,7 @@ categorize_named_entities <- function(named_entities) {
 
 named_entities <- negative_data$entities
 categorized_entities <- categorize_named_entities(named_entities)
-
+categorize_named_entities("CovidVaccine")
 
 # Create a new data frame with named entities and categories
 categorized_data <- data.frame(do.call(rbind, categorized_entities), stringsAsFactors = FALSE)
@@ -145,3 +145,6 @@ ggplot(category_counts[category_counts$Category != "Undefined",], aes(x=reorder(
   theme(plot.title = element_text(hjust = 0.5),
         axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+sum(category_counts$Count)
+sum(entity_counts$n)
