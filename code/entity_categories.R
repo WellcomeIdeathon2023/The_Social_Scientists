@@ -125,7 +125,7 @@ entity_counts <- categorized_data %>%
 
 #Barplot of most common entities
 ggplot(entity_counts, aes(x = reorder(Entity, -n), y = n)) +
-  geom_col(fill = "skyblue", width = 0.6) +
+  geom_col(fill = "skyblue", width = 0.9) +
   xlab("Named Entity") +
   ylab("Count") +
   ggtitle("Top 10 Most Common Named Entities") +
@@ -135,9 +135,12 @@ ggplot(entity_counts, aes(x = reorder(Entity, -n), y = n)) +
 
 
 # Barplot of categories
-ggplot(cat_counts[cat_counts$Category != "Undefined",], aes(x=reorder(Category, -Count), y=Count)) +
+ggplot(category_counts[category_counts$Category != "Undefined",], aes(x=reorder(Category, -Count), y=Count)) +
   geom_bar(stat="identity") +
-  geom_col(fill = "skyblue", width = 0.6) +
+  geom_col(fill = "skyblue", width = 0.9) +
+  xlab("Category") +
+  ylab("Count") +
+  ggtitle("Most common categories") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         axis.text.x = element_text(angle = 45, hjust = 1))
