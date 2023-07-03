@@ -1,0 +1,244 @@
+---
+title: "EDA Steve"
+output: html_notebook
+---
+
+
+
+```{r}
+rm(list = ls())
+```
+
+## Importing data
+
+```{r}
+library(tidyverse)
+library(tm)
+twitter_data = read.csv("vax_tweets.csv")
+
+```
+
+## Data types
+
+```{r}
+glimpse(twitter_data)
+
+```
+
+
+### Replace blanks with NA
+
+```{r}
+twitter_data[twitter_data == ''] <- NA
+```
+
+### Proportion missing for each variable
+
+```{r}
+colMeans(is.na(twitter_data))
+```
+
+seems some tweets have no user_followers and just afew are retweets. 6% have no user description
+
+### User with multiple fields missing 
+
+```{r}
+twitter_data$na_count <- apply(twitter_data, 1, function(x) sum(is.na(x)))
+
+missing = subset(twitter_data,twitter_data$na_count>=8)
+
+View(missing)
+twitter_data = subset(twitter_data,twitter_data$na_count<8)
+```
+
+### Removing users with no followers
+
+```{r}
+twitter_data = subset(twitter_data,!is.na(twitter_data$user_followers))
+```
+
+```{r}
+summary(twitter_data$user_followers)
+```
+
+Can exclude users below 1st quartile? no justification, maybe leave them..need to discuss
+
+
+### Remove duplicate tweets and other things
+
+```{r}
+
+# Removing Duplicate tweets
+twitter_data$Duplicate = duplicated(twitter_data$text)
+twitter_data = subset(twitter_data, twitter_data$Duplicate=="FALSE")
+twitter_data$Duplicate=NULL
+
+# Removing blank spaces, punctuation, links, extra spaces, special characters and other unwanted things.
+twitter_data$text = gsub("[:blank:]", "", twitter_data$text) #blank spaces
+twitter_data$text = gsub("[[:punct:]]", "", twitter_data$text) #punctuations
+twitter_data$text = gsub("[:cntrl:]", "", twitter_data$text) #special characters
+twitter_data$text = gsub("[[:digit:]]", "", twitter_data$text) #numbers
+twitter_data$text = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", " ",  twitter_data$text) #retweet mentions
+twitter_data$text <- gsub("@[[:alpha:]]*","", twitter_data$text) #twitter mentions
+twitter_data$text = gsub("http\\w+", "", twitter_data$text) #links
+
+```
+
+
+### Removing troll tweets 
+
+#### Trolling Hashtags. 
+
+isolated several of the following hashtags that corresponded to
+the COVID-19 infodemic as defined by the WHO [83]. The specific hashtags that we identified included. 
+
+Source:  https://arxiv.org/pdf/2012.02586.pdf
+
+```{r}
+remove.list <- paste(c(
+  #People Died:
+  "ChinaLiedPeopleDied", "WHOliedPeopleDied", "ChinaHideAndPeopleDied",
+  #Sinophobic:           
+  "ChinaVirus","CCPvirus","ShameOnChina","#ChinesePlague","MakeChinaPay",
+  #Iran:                   
+  "liftsanctionsoniran","helpirancoronawhom",
+  #Trump:                  
+  "TrumpPandemic","TrumpVirus","TrumpLiesAboutCoronavirus",
+  #Rumors:                   
+  "DiseaseFree_With_TrueWorship","coronavirusstats",
+  #Hoax:                    
+  "CoronaVirusHoax","DemocraticHoax","CoronaVaccineHoax",
+  #General Negativity :                  
+  "waronhumanity","enemywithin",
+  #Policy:                   
+  "DefenseProductionActNow","BoycottChina",
+  #Right-Leaning:               
+  "PelosiHatesAmericans","DemocraticHoax"
+  
+                       ), collapse = '|')
+
+twitter_data = twitter_data %>% filter(!grepl(remove.list, hashtags))
+
+```
+
+#### Trolling Tropes
+
+```{r}
+remove.list <- paste(c("Russian scientist","war criminal","culpable","made in
+China","genocide","torture","rape"
+                       ), collapse = '|')
+
+twitter_data = twitter_data %>% filter(!grepl(remove.list, text))
+
+remove.list <- paste(c("eat","bats"
+                       ), collapse = ' ')
+twitter_data = twitter_data %>% filter(!grepl(remove.list, text))
+
+```
+
+### Major news events
+
+
+#### Date format
+
+```{r}
+twitter_data$date_new = as.Date(substr(twitter_data$date, 1, 10), format="%d/%m/%Y")
+
+twitter_data$date_time=as.POSIXlt(twitter_data$date,format="%d/%m/%Y %H:%M")
+
+twitter_data$day <- day(twitter_data$date_time)
+twitter_data$hour <- hour(twitter_data$date_time)
+```
+
+#### Tweets by date
+
+```{r}
+ggplot(twitter_data, aes(x = date_new)) + 
+  geom_density()
+```
+
+More tweets between __January 2021 and March 2021__ and again between __July 2021 and October 2021__
+
+
+### UK timeline
+
+https://www.instituteforgovernment.org.uk/sites/default/files/timeline-coronavirus-lockdown-december-2021.pdf
+
+
+####  January 2021 and March 2021
+
++ (2 Dec) Second lockdown ends after four weeks and England returns to a stricter three-tier system of restrictions
++ (15 Dec) PM says Christmas rules will still be relaxed but urges the public to keep celebrations “short” and “small”
++ (19 Dec) PM announces tougher restrictions for London
+and South East England, with a new Tier 4 'Stay at Home’ alert level.Christmas mixing rules tightened.
++ (21 Dec) Tier 4 restrictions come into force in London and South East England
++ (26 Dec) More areas of England enter Tier 4 restrictions
++ (4 Jan) PM says PM says children should return to school after the Christmas break, but warns restrictions in England will get tougher.
++ (6 Jan) England enters third national lockdown
++ (15 Feb) Hotel quarantine for travellers arriving in England from 33 high-risk countries begins
++ (22 Feb) PM publishes a roadmap for lifting the lockdown 
+
+
+####  July 2021 and October 2021
+
++ (14 June) PM confirms that step 4 of the roadmap will be delayed by four weeks, until 19 July, as the government accelerates
+the vaccination programme.Restrictions on weddings and funerals abolished.
++ (19 July) Most legal limits on social contact removed
+in England, and final closed sectors of the economy reopened (e.g.nightclubs).
++ (14 Sep) PM unveils England’s winter plan for Covid –
+‘Plan B’ to be used if the NHS is coming under “unsustainable pressure”,and includes measures such as face masks.
+
+### US timeline
+
+https://fraser.stlouisfed.org/timeline/covid-19-pandemic#140
+
+####  January 2021 and March 2021
+
++ December 11, 2020 | FDA Authorizes COVID-19 Vaccine
++ December 18, 2020 | FDA Authorizes Second COVID-19 Vaccine
++ December 23, 2020 | CDC Estimates COVID-19 Vaccinations Have Surpassed 1 Million First Doses in the United States
++ December 27, 2020 | President Trump Signs the Coronavirus Response and Relief Supplemental Appropriations Act Into Law
++ January 6, 2021 | CDC Estimates COVID-19 Vaccinations Have Surpassed 5 Million First Doses in the United States
++ January 13, 2021 | CDC Estimates COVID-19 Vaccinations Have Surpassed 10 Million First Doses in the United States
++ January 20, 2021 | President Biden Issues New COVID-19 Guidance
++ January 28, 2021 | CDC Estimates COVID-19 Vaccinations Have Surpassed 25 Million in the United States
++ January 29, 2021 | CDC Issues Public Transportation Mask Order
++ February 13, 2021 | CDC Estimates COVID-19 Vaccinations Have Surpassed 50 Million in the United States
++ February 27, 2021 | FDA Authorizes Third COVID-19 Vaccine
++ March 2, 2021 | Texas Reopens and Lifts Mask Mandate
++ March 2, 2021 | President Biden Invokes the Defense Production Act to Expedite Vaccine Production
++ March 12, 2021 | CDC Estimates COVID-19 Vaccinations Have Surpassed 100 Million in the United States
++ March 23, 2021 | Chair Powell and Treasury Secretary Yellen Give Testimony to Congress
+
+####  July 2021 and October 2021
+
++ June 22, 2021 | Chair Powell Gives Testimony to Congress
++ June 23, 2021 | 600,000 COVID-19 Deaths in the United States
++ July 27, 2021 | CDC Updates Guidelines for Fully Vaccinated People
++ August 18, 2021 | CDC Announces Plans for COVID-19 Vaccine Booster Shots
++ August 20, 2021 | Two Hundred Million People Have Received at Least One Vaccine Dose
++ August 23, 2021 | FDA Approves First COVID-19 Vaccine
++ September 22, 2021 | FDA Authorizes Booster Dose of COVID-19 Vaccine
++ October 29, 2021 | FDA Authorizes COVID-19 Vaccine for Children 5 to 11 Years of Age
+
+
+Tweets by day
+
+```{r}
+ggplot(twitter_data, aes(x = day)) + 
+  geom_density()
+```
+
+Tweets by hour
+
+```{r}
+ggplot(twitter_data, aes(x = hour)) + 
+  geom_density()
+```
+
+Most people tweeted around 3pm
+
+```{r}
+write.csv(twitter_data,"vax_tweets_cleanSW.csv",row.names = F)
+```
+
