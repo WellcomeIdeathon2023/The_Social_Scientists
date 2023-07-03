@@ -14,7 +14,7 @@ rm(list = ls())
 ```{r}
 library(tidyverse)
 library(tm)
-twitter_data = read.csv("vax_tweets.csv")
+twitter_data = read.csv("/Users/ssw107/Desktop/PhD/Wellcome Ideathon/EDA/The_Social_Scientists/data/vax_tweets.csv")
 
 ```
 
@@ -76,9 +76,9 @@ twitter_data$Duplicate=NULL
 # Removing blank spaces, punctuation, links, extra spaces, special characters and other unwanted things.
 twitter_data$text = gsub("[:blank:]", "", twitter_data$text) #blank spaces
 twitter_data$text = gsub("[[:punct:]]", "", twitter_data$text) #punctuations
-twitter_data$text = gsub("[:cntrl:]", "", twitter_data$text) #special characters
+#twitter_data$text = gsub("[:cntrl:]", "", twitter_data$text) #special characters
 twitter_data$text = gsub("[[:digit:]]", "", twitter_data$text) #numbers
-twitter_data$text = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", " ",  twitter_data$text) #retweet mentions
+#twitter_data$text = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", " ",  twitter_data$text) #retweet mentions
 twitter_data$text <- gsub("@[[:alpha:]]*","", twitter_data$text) #twitter mentions
 twitter_data$text = gsub("http\\w+", "", twitter_data$text) #links
 
@@ -239,6 +239,15 @@ ggplot(twitter_data, aes(x = hour)) +
 Most people tweeted around 3pm
 
 ```{r}
-write.csv(twitter_data,"vax_tweets_cleanSW.csv",row.names = F)
+write.csv(twitter_data,"/Users/ssw107/Desktop/PhD/Wellcome Ideathon/EDA/The_Social_Scientists/data/vax_tweets_cleanSW1.csv",row.names = F)
 ```
+
+
+
+
+
+
+
+
+
 
