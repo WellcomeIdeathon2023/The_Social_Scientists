@@ -235,7 +235,7 @@ ggplot(twitter_data, aes(x = hour)) +
 Most people tweeted around 3pm
 
 ```{r}
-write.csv(twitter_data,"/Users/ssw107/Desktop/PhD/Wellcome Ideathon/EDA/The_Social_Scientists/data/vax_tweets_clean_dupsandtrolls.csv",row.names = F)
+write.csv(twitter_data,"/Users/ssw107/Desktop/PhD/Wellcome Ideathon/EDA/The_Social_Scientists/data/vax_tweets_cleanSW.csv",row.names = F)
 ```
 
 
