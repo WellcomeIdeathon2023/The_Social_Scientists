@@ -1,0 +1,164 @@
+---
+title: "Sentiment analysis part 1"
+output: html_notebook
+---
+
+
+
+```{r}
+rm(list = ls())
+```
+
+
+```{r}
+library(readr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(zoo)
+library(stringr)
+library(purrr)
+library(tidyr)
+
+library(tidyverse)
+library(stringi)
+
+vax_sentiment <- read.csv("/Users/ssw107/Desktop/PhD/Wellcome Ideathon/EDA/The_Social_Scientists/data/vax_tweets_with_sentiment_entities_3.csv")
+
+
+```
+
+### Select only sentiment and text
+
+
+```{r}
+vax_sentiment <- vax_sentiment %>% dplyr::select(cleaned_text, 
+                                 polarity_text) %>%
+                mutate(WordCount = stri_count_words(cleaned_text))
+
+```
+
+### separate negative sentiment and positive sentiment
+
+Create a new data frame with only tweets whose sentiment value is less than 0
+
+```{r}
+vax_sentiment_negative <- filter(vax_sentiment, polarity_text <0)
+vax_sentiment_positive <- filter(vax_sentiment, polarity_text >0)
+
+nrow(vax_sentiment_negative)
+nrow(vax_sentiment_positive)
+```
+
+## Common topics
+
+Now, we want to know what topics are most commonly contained within these tweets. There are two ways we can go about understanding this. 
+
++ The first is to look only at frequency. That is, which words are the most common? 
+
++ The second is to form topic clusters which show us which words are most associated with one another.
+
+### First approach: Which words are the most common? 
+
+To do the first, finding the most frequent words, we need to begin by separating out each word. We will do this using the __quanteda__ package. This is another text analysis package with a few simple tools to help us get the answers we want. After loading quanteda, we then use the __tokens()__ command to separate out each word individually.
+
+```{r}
+library(quanteda)
+vax_sentiment_tokenized_list <- tokens(vax_sentiment_negative$cleaned_text)
+vax_sentiment_tokenized_list2 <- tokens(vax_sentiment_positive$cleaned_text)
+```
+
+Next, we turn this list object into a document feature matrix with the dfm() command. This turns every row into a document (which in this case is a tweet) and every term (or word) into a column. Finally, we are able to use the colSums() command to get the count of use for every word, which we assign to the vector “word_sums.” Using length() on this vector, we are able to tell that there are xx values, or xx words.
+
+
+```{r}
+vax_sentiment_dfm <- dfm(vax_sentiment_tokenized_list)
+vax_sentiment_dfm2 <- dfm(vax_sentiment_tokenized_list2)
+
+word_sums <- colSums(vax_sentiment_dfm)
+word_sums2 <- colSums(vax_sentiment_dfm2)
+length(word_sums)
+length(word_sums2)
+```
+
+In order to then see which words are the most frequent, we create a new data frame from the “word_sums” values and order it by most common to least common words
+
+```{r}
+freq_data <- data.frame(word = names(word_sums), 
+                        freq = word_sums, 
+                        row.names = NULL,
+                        stringsAsFactors = FALSE)
+
+sorted_freq_data <- freq_data[order(freq_data$freq, decreasing = TRUE), ]
+
+head(sorted_freq_data) #let's look at first 10 words
+
+```
+
+```{r}
+freq_data2 <- data.frame(word = names(word_sums2), 
+                        freq = word_sums2, 
+                        row.names = NULL,
+                        stringsAsFactors = FALSE)
+
+sorted_freq_data2 <- freq_data2[order(freq_data2$freq, decreasing = TRUE), ]
+
+head(sorted_freq_data2) #let's look at first 10 words
+```
+
+### Second approach: Topic clusters
+
+Turn the cleaned_text (column 17) into corpus and then into a document term matrix with the DocumentTermMatrix() command from _tm_ package
+
+```{r}
+vax_sentiment_corpus_tm <- Corpus(VectorSource(vax_sentiment_negative[,1]))
+vax_sentiment_dtm <- DocumentTermMatrix(vax_sentiment_corpus_tm)
+
+
+vax_sentiment_corpus_tm2 <- Corpus(VectorSource(vax_sentiment_positive[,1]))
+vax_sentiment_dtm2 <- DocumentTermMatrix(vax_sentiment_corpus_tm2)
+
+```
+
+
+We are uninterested in words which are so uncommon that they don’t appear in at least 2% of the documents–this is communicated by the complementary 0.98 threshold assigned to the removeSparseTerms() command. 
+
+
+```{r}
+vax_sentiment_dtm <- removeSparseTerms(vax_sentiment_dtm, 0.98)
+vax_sentiment_dtm2 <- removeSparseTerms(vax_sentiment_dtm2, 0.98)
+
+vax_sentiment_cluster <- as.data.frame(as.matrix(vax_sentiment_dtm))
+vax_sentiment_cluster2 <- as.data.frame(as.matrix(vax_sentiment_dtm2))
+```
+
+Create clusters using a technique called Exploratory Graph Analysis through EGAnet package. EGA is a form of network analysis which creates word clusters based on correlation. Words which are most correlated with one another will appear in the same cluster (also called a dimension) and it is up to the user to interpret these results.
+
+```{r}
+library(EGAnet)
+library(sna)
+```
+
+#### Negative sentiment clusters
+
+```{r}
+ega_vax_sentiment <- EGA(vax_sentiment_cluster, cor = "spearman")
+```
+
+
+```{r}
+ega_vax_sentiment$dim.variables
+```
+
+
+#### Positive sentiment clusters
+
+```{r}
+ega_vax_sentiment2 <- EGA(vax_sentiment_cluster2, cor = "spearman")
+```
+
+```{r}
+ega_vax_sentiment2$dim.variables
+```
+
+
