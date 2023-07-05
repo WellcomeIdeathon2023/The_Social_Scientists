@@ -74,7 +74,7 @@ twitter_data$Duplicate=NULL
 
 twitter_data$text = gsub("[[:digit:]]", "", twitter_data$text) #numbers
 
-twitter_data$text=gsub("[^\x01-\x7F]", "", twitter_data$text)
+twitter_data$text=gsub("[^\x01-\x7F]", "", twitter_data$text) #non-ASCII characters
 
 twitter_data$text = gsub("http\\w+", "", twitter_data$text) #links
 
