@@ -1,12 +1,8 @@
-
 import pandas as pd
-
-
 
 # read data from corpus
 data = pd.read_csv('vax_tweets_with_sentiment_entities_3.csv', error_bad_lines=False)
 documents= data[['text']] 
-
 
 
 import re
@@ -55,12 +51,10 @@ stanza.download('en')
 nlp = stanza.Pipeline('en')  
 
 
-
 def lemmatize_text(text, nlp):
     doc = nlp(text)
     lemmas = [word.lemma for sentence in doc.sentences for word in sentence.words if word.lemma]
     return ' '.join(lemmas)
-
 
 
 
@@ -88,7 +82,6 @@ for tweet in tweets:
 docs = list(set(cleaned_tweets))
 
 
-
 # Tokenize the documents.
 from nltk.tokenize import RegexpTokenizer
 
@@ -102,8 +95,6 @@ for idx in range(len(docs)):
 docs = [[token for token in doc if len(token) > 1] for doc in docs]
 
 
-
-
 from gensim.models import Phrases
 
 # Add bigrams and trigrams to docs (only ones that appear 20 times or more).
@@ -114,7 +105,6 @@ for idx in range(len(docs)):
         if '_' in token:
             # Token is a bigram, add to document.
             docs[idx].append(token)
-
 
 
 # Remove rare and common tokens.
@@ -131,8 +121,6 @@ corpus = [dictionary.doc2bow(doc) for doc in docs]
 
 print('Number of unique tokens: %d' % len(dictionary))
 print('Number of documents: %d' % len(corpus))
-
-
 
 
 # Train LDA model.
@@ -163,26 +151,17 @@ model = LdaModel(
 
 
 
-
 import pyLDAvis.gensim_models as gensimvis
 import pyLDAvis
 vis_data = gensimvis.prepare(model, corpus, dictionary)
 
 
-
 pyLDAvis.display(vis_data)
-
-
-
 pyLDAvis.save_html(vis_data, 'LDA.html')
-
-
-
 
 
 topic_probabilities = model.get_document_topics(corpus)
 
-# Prepare the data for the CSV file
 data = []
 for tweet, topics in zip(cleaned_tweets, topic_probabilities):
     topic = max(topics, key=lambda x: x[1])[0]  # Get the dominant topic for each tweet
@@ -193,7 +172,6 @@ df = pd.DataFrame(data, columns=['tweets', 'topics'])
 
 # Save the DataFrame to a CSV file
 df.to_csv('tweet_topics.csv', index=False)
-
 
 
 
