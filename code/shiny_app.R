@@ -3,6 +3,8 @@ library(ggplot2)
 library(dplyr)
 library(lubridate)
 
+source("functions.R")
+
 setwd("C:/Users/s1723280/Documents/GitHub/The_Social_Scientists/The_Social_Scientists/data")
 
 # Load the categories list from the RDS file
@@ -33,13 +35,17 @@ ui <- fluidPage(
       )
     ),
     mainPanel(
-      plotOutput("barplot_categories")
+      plotOutput("barplot_categories"),
+      plotOutput("sentiment_plot"),
+      tableOutput("negative_hashtags_table"),
+      tableOutput("correlated_negative_hashtags_table")
     )
   )
 )
 
-# Define server
+
 server <- function(input, output) {
+  source("functions.R")
   
   # Generate the plots
   output$barplot_categories <- renderPlot({
@@ -47,25 +53,91 @@ server <- function(input, output) {
     
     ggplot(category_counts, aes(x = reorder(Category, -Count), y = Count)) +
       geom_bar(stat = "identity", fill = "steelblue") +
-      labs(x = "Category", y = "Count") +  # Add axis labels
-      theme_minimal() +  # Use a minimal theme
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+      labs(x = "Category", y = "Count") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
   })
   
-  # Helper function to process the data and generate the entity_category_df
+  output$sentiment_plot <- renderPlot({
+    # Load the necessary data (replace with your own data loading code)
+    selected_date <- parse_date_time(input$selected_month, "b-y")
+    file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+    data <- get(file_name)
+    
+    # Compute the sums every five days
+    fiveday_sums <- compute_sums_every_five_days(data)
+    
+    # Label high periods
+    fiveday_sums <- label_high_periods(fiveday_sums)
+    
+    # Create a new data frame for high_neg == TRUE
+    high_neg_dates <- fiveday_sums %>%
+      filter(high_neg == TRUE) %>%
+      select(date_interval)
+    
+    # Plot the sentiment over time
+    ggplot(fiveday_sums, aes(x = date_interval)) +
+      geom_line(aes(y = normalized_pos), color = 'blue') +
+      geom_line(aes(y = normalized_neg), color = 'red') +
+      geom_vline(
+        data = high_neg_dates,
+        aes(xintercept = as.numeric(date_interval)),
+        linetype = "dashed",
+        color = "black",
+        size = 0.5
+      ) +
+      labs(
+        title = "Normalized Sentiment Over Time",
+        x = "Date Interval",
+        y = "Normalized Sentiment Score",
+        color = "Legend"
+      ) +
+      scale_color_manual(
+        values = c("blue", "red"),
+        labels = c("Positive", "Negative")
+      ) +
+      theme_minimal()
+  })
+  
+  output$negative_hashtags_table <- renderTable({
+    # Load the necessary data (replace with your own data loading code)
+    selected_date <- parse_date_time(input$selected_month, "b-y")
+    file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+    data <- get(file_name)
+    
+    # Get the most common hashtags associated with negative sentiment
+    timeframe_start <- "2020-01-01"
+    timeframe_end <- "2020-06-30"
+    get_negative_hashtags(data, timeframe_start, timeframe_end)
+  })
+  
+  output$correlated_negative_hashtags_table <- renderTable({
+    # Load the necessary data (replace with your own data loading code)
+    selected_date <- parse_date_time(input$selected_month, "b-y")
+    file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+    data <- get(file_name)
+    
+    # Get hashtags with the highest negative correlation
+    timeframe_start <- "2020-01-01"
+    timeframe_end <- "2020-06-30"
+    get_correlated_negative_hashtags(data, timeframe_start, timeframe_end)
+  })
+  
+  # Helper function to process the data and generate the category_counts
   processEntitiesData <- function(selected_month) {
     selected_date <- parse_date_time(selected_month, "b-y")
     file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
     data <- get(file_name)
     
     # Create an empty dataframe
-    variable_sums <- colSums(data[,17:34])
+    variable_sums <- colSums(data[, 17:34])
     
     category_counts <- data.frame(Category = names(variable_sums), Count = variable_sums)
     
     return(category_counts)
   }
 }
+
 
 # Run the app
 shinyApp(ui = ui, server = server)
