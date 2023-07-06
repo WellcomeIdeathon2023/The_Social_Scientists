@@ -1,0 +1,251 @@
+---
+title: "Sentiment analysis part 2"
+output: html_notebook
+---
+
+
+```{r}
+rm(list = ls())
+```
+
+## Importing data and cleaning text
+
+```{r}
+library(tidyverse)
+library(tm)
+twitter_data = read.csv("/Users/ssw107/Desktop/PhD/Wellcome Ideathon/EDA/The_Social_Scientists/data/vax_tweets_cleanSW.csv")
+
+```
+
+### Removing twitter mentions
+
+```{r}
+twitter_data$text <- gsub("@[[:alpha:]]*","", twitter_data$text)
+# twitter_data$text <-sub("(?:\\s*#\\w+)+\\s*$", "", twitter_data$text)
+# twitter_data$text <-sub("^(?:\\s*#\\w+)+\\s*", "", twitter_data$text)
+
+```
+
+### convert the portion of our data frame containing text into a corpus object
+
+```{r}
+text_corpus <- Corpus(VectorSource(twitter_data$text))
+
+```
+
+### convert all of our text to lowercase
+
+```{r}
+text_corpus <- tm_map(text_corpus, tolower)
+```
+
+### Then, we want to remove mentions of __“covid19”__ or __"vaccine"__ 
+
+We want to remove this piece of text because, logically, since we selected tweets based on their inclusion of “covid19 vaccine” having it in our text tells us nothing interesting about their content.
+
+
+```{r}
+text_corpus <- tm_map(text_corpus, removeWords,
+                      c("covid","covid19", "vaccine", "covid","covidvaccines","covidvaccine","covid-19", "coronavirus","amp","vaccination","vaccines","jab"))
+```
+
+### remove stop words
+
+```{r}
+text_corpus <- tm_map(text_corpus, removeWords, 
+                      stopwords("english"))
+```
+
+### need to remove punctuations
+
+This does include removing the # sign, too. However, the content of hashtags will still be reported with this operation, just without the accompanying symbol.
+
+```{r}
+text_corpus <- tm_map(text_corpus, removePunctuation)
+```
+
+### turn this cleaned corpus back into the original data set and name it text_clean
+
+```{r}
+text_df <- data.frame(text_clean = get("content", text_corpus), 
+                      stringsAsFactors = FALSE) #obtaining corpus object to a dataframe and naming it text_clean
+
+twitter_data1 <- cbind.data.frame(twitter_data, text_df) #merging back to original data
+
+```
+
+## Sentiment analysis
+
++ Utilizing the __SentimentAnalysis__ package, we can simply apply the command __analyzeSentiment()__ to quickly create a data frame which contains the sentiment scoring for each tweet. 
+
++ Contained in this data frame are 13 sentiment scores from four different dictionaries: GI, HE, LM, and QDAP. 
+
++ Running the analyzeSentiment() command compares the text of the tweets with these various dictionaries, looking for word matches. When there are matches with positively or negatively categorized words, the tweet is given a corresponding sentiment score, which is located in the __vax_sentiment__ data frame.
+
+
+__need more memory so running further steps in the whole datset on the server__
+
+```{r}
+saveRDS(twitter_data1,"data_for_sentiment_analysis.rds")
+```
+
+
+### Sentiment analysis for whole dataset (sentiments obtained on the server)
+
+```{r}
+library(SentimentAnalysis)
+
+vax_sentiment = readRDS("/Users/ssw107/Desktop/PhD/Wellcome Ideathon/EDA/The_Social_Scientists/data/vax_sentiment050623V1.rds")
+
+```
+
+### Selecting variables of interest from the sentiment dataframe
+
+```{r}
+vax_sentiment <- dplyr::select(vax_sentiment,
+                                 SentimentGI, SentimentHE,
+                                 SentimentLM, SentimentQDAP,
+                                 WordCount)
+```
+
+### Mean sentiment
+
+Create a mean value for each tweet’s sentiment level, leaving us with a single sentiment value for each tweet. column 5 in the sentiment dataframe is the word count column, need to exclude it from the mean calculation
+
+```{r}
+vax_sentiment <- dplyr::mutate(vax_sentiment, 
+                                 mean_sentiment = rowMeans(vax_sentiment[,-5]))
+```
+
+Now select only mean sentiment and word count and merge these to the original data
+
+```{r}
+vax_sentiment <- dplyr::select(vax_sentiment, 
+                                 WordCount, 
+                                 mean_sentiment)
+
+twitter_data1 <- cbind.data.frame(twitter_data1, vax_sentiment)
+```
+
+### separate negative sentiment and positive sentiment
+
+Create a new data frame with only tweets whose mean value is less than 0
+
+```{r}
+twitter_data1_negative <- filter(twitter_data1, mean_sentiment <0)
+twitter_data1_positive <- filter(twitter_data1, mean_sentiment >0)
+
+nrow(twitter_data1_negative)
+nrow(twitter_data1_positive)
+```
+
+## Common topics
+
+Now, we want to know what topics are most commonly contained within these tweets. There are two ways we can go about understanding this. 
+
++ The first is to look only at frequency. That is, which words are the most common? 
+
++ The second is to form topic clusters which show us which words are most associated with one another.
+
+### First approach: Which words are the most common? 
+
+To do the first, finding the most frequent words, we need to begin by separating out each word. We will do this using the __quanteda__ package. This is another text analysis package with a few simple tools to help us get the answers we want. After loading quanteda, we then use the __tokens()__ command to separate out each word individually.
+
+```{r}
+library(quanteda)
+twitter_data1_tokenized_list <- tokens(twitter_data1_negative$text_clean)
+twitter_data1_tokenized_list2 <- tokens(twitter_data1_positive$text_clean)
+```
+
+Next, we turn this list object into a document feature matrix with the dfm() command. This turns every row into a document (which in this case is a tweet) and every term (or word) into a column. Finally, we are able to use the colSums() command to get the count of use for every word, which we assign to the vector “word_sums.” Using length() on this vector, we are able to tell that there are xx values, or xx words.
+
+
+```{r}
+twitter_data1_dfm <- dfm(twitter_data1_tokenized_list)
+twitter_data1_dfm2 <- dfm(twitter_data1_tokenized_list2)
+word_sums <- colSums(twitter_data1_dfm)
+word_sums2 <- colSums(twitter_data1_dfm2)
+length(word_sums)
+length(word_sums2)
+```
+
+In order to then see which words are the most frequent, we create a new data frame from the “word_sums” values and order it by most common to least common words
+
+```{r}
+freq_data <- data.frame(word = names(word_sums), 
+                        freq = word_sums, 
+                        row.names = NULL,
+                        stringsAsFactors = FALSE)
+
+sorted_freq_data <- freq_data[order(freq_data$freq, decreasing = TRUE), ]
+
+head(sorted_freq_data) #let's look at first 10 words
+
+```
+
+```{r}
+freq_data2 <- data.frame(word = names(word_sums2), 
+                        freq = word_sums2, 
+                        row.names = NULL,
+                        stringsAsFactors = FALSE)
+
+sorted_freq_data2 <- freq_data2[order(freq_data2$freq, decreasing = TRUE), ]
+
+head(sorted_freq_data2) #let's look at first 10 words
+```
+
+### Second approach: Topic clusters
+
+Turn the text_clean (column 17) into corpus and then into a document term matrix with the DocumentTermMatrix() command from _tm_ package
+
+```{r}
+twitter_data1_corpus_tm <- Corpus(VectorSource(twitter_data1_negative[,17]))
+twitter_data1_dtm <- DocumentTermMatrix(twitter_data1_corpus_tm)
+
+
+twitter_data1_corpus_tm2 <- Corpus(VectorSource(twitter_data1_positive[,17]))
+twitter_data1_dtm2 <- DocumentTermMatrix(twitter_data1_corpus_tm2)
+
+```
+
+
+We are uninterested in words which are so uncommon that they don’t appear in at least 2% of the documents–this is communicated by the complementary 0.98 threshold assigned to the removeSparseTerms() command. 
+
+
+```{r}
+twitter_data1_dtm <- removeSparseTerms(twitter_data1_dtm, 0.98)
+twitter_data1_dtm2 <- removeSparseTerms(twitter_data1_dtm2, 0.98)
+
+twitter_data1_cluster <- as.data.frame(as.matrix(twitter_data1_dtm))
+twitter_data1_cluster2 <- as.data.frame(as.matrix(twitter_data1_dtm2))
+```
+
+Create clusters using a technique called Exploratory Graph Analysis through EGAnet package. EGA is a form of network analysis which creates word clusters based on correlation. Words which are most correlated with one another will appear in the same cluster (also called a dimension) and it is up to the user to interpret these results.
+
+```{r}
+library(EGAnet)
+library(sna)
+```
+
+#### Negative sentiment clusters
+
+```{r}
+ega_twitter_data1 <- EGA(twitter_data1_cluster, cor = "spearman")
+```
+
+
+```{r}
+ega_twitter_data1$dim.variables
+```
+
+#### Positive sentiment clusters
+
+```{r}
+ega_twitter_data12 <- EGA(twitter_data1_cluster2, cor = "spearman")
+```
+
+```{r}
+ega_twitter_data12$dim.variables
+```
+
+
