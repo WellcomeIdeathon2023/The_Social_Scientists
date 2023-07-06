@@ -1,3 +1,12 @@
+library(readr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(zoo)
+library(stringr)
+library(purrr)
+library(tidyr)
+
 # Helper function to process the data and generate the category_counts
 processEntitiesData <- function(selected_month) {
   selected_date <- parse_date_time(selected_month, "b-y")

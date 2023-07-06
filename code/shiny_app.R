@@ -3,9 +3,11 @@ library(ggplot2)
 library(dplyr)
 library(lubridate)
 
-source("functions.R")
 
 setwd("C:/Users/s1723280/Documents/GitHub/The_Social_Scientists/The_Social_Scientists/data")
+source("functions.R")
+
+
 
 # Load the categories list from the RDS file
 categories <- readRDS("categories (3).rds")
@@ -35,10 +37,17 @@ ui <- fluidPage(
       )
     ),
     mainPanel(
-      plotOutput("barplot_categories"),
-      plotOutput("sentiment_plot"),
-      tableOutput("negative_hashtags_table"),
-      tableOutput("correlated_negative_hashtags_table")
+      tabsetPanel(
+        tabPanel(
+          "Categories",
+          plotOutput("barplot_categories")
+        ),
+        tabPanel(
+          "Sentiment",
+          plotOutput("sentiment_plot"),
+          # Add any other output elements specific to the sentiment analysis here
+        )
+      )
     )
   )
 )

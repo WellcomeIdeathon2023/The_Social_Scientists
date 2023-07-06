@@ -207,9 +207,17 @@ category_counts <- entity_category_df %>%
 
 
 saveRDS(categories, "categories")
+
+
 # Find the minimum and maximum dates
 min_date <- min(data$date)
 max_date <- max(data$date)
+
+
+
+
+
+
 
 
 # Generate monthly datasets and write to CSV
