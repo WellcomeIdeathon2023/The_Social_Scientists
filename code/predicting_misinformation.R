@@ -1,4 +1,5 @@
 # Get the directory of the R script
+library(dplyr)
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
 # Set the working directory
@@ -62,13 +63,6 @@ plot(roc_obj, main = "ROC Curve", print.auc = TRUE)
 legend("bottomright", legend = paste("AUC =", round(auc(roc_obj), 2)), cex = 0.8)
 
 
-
-# Load the pROC package
-library(pROC)
-
-# Compute the ROC curve
-roc_obj <- roc(test_data$misinformation, prob_predictions)
-
 # Find the threshold that maximizes Youden's Index
 max_index <- which.max(roc_obj$sensitivities + roc_obj$specificities - 1)
 threshold <- roc_obj$thresholds[max_index]
@@ -81,15 +75,35 @@ print(paste("Threshold maximizing Youden's Index:", threshold))
 # Find the observations in 'tweets' that do not have matching values in 'data$X'
 validation <- anti_join(tweets, data, by = "X")
 
-pred = predict(model, validation, type = "prob")
+pred = predict(model, validation, type = "response")
 
-validation$misinformation = pred[,2]
+validation$misinformation = pred
+
+pred1 = predict(model, merged_data, type = "response")
+
+merged_data$misinformation = pred1
 
 
 
-# Apply thresholding to convert probabilities to binary predictions
-validation$misinformation <- ifelse(validation$misinformation >= threshold, 1, 0)
+#10 day rolling average of misinformation prediction
 
-# Print the updated 'data' dataframe with the binary predictions
-summary(as.factor(validation$misinformation))
-summary(as.factor(data$misinformation))
+# Step 1: Convert the 'date' column to a date format
+final_data = rbind(merged_data, validation)
+final_data$date <- as.Date(final_data$date)
+
+# Step 2: Sort the data frame by date
+library(dplyr)
+final_data <- final_data %>%
+  arrange(date)
+
+# Step 3: Calculate the 10-day rolling average of 'misinformation' by date
+library(zoo)
+final_data <- final_data %>%
+  group_by(date) %>%
+  summarise(misinformation_avg = mean(misinformation)) %>%
+  mutate(misinformation_avg_10 = rollmean(misinformation_avg, k = 10, fill = NA, align = "right", by = "1 day"))
+
+# Step 4: Create a line plot of the 10-day average over time
+plot(final_data$date, final_data$misinformation_avg_10, type = "l", xlab = "Date", ylab = "10-day Average of Misinformation", 
+     main = "10-day Average of Misinformation Over Time")
+grid()
