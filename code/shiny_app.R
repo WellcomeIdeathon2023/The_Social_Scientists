@@ -2,15 +2,28 @@ library(shiny)
 library(ggplot2)
 library(dplyr)
 library(lubridate)
+library(tidyverse)
+library(igraph)
+library(Matrix)
+library(tidyverse)
+library(networkD3)
+library(htmlwidgets)
+library(visNetwork)
+library(here)
 
 
-setwd("C:/Users/s1723280/Documents/GitHub/The_Social_Scientists/The_Social_Scientists/data")
+
+# Get the directory of the R script
+script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
+
+# Set the working directory
+setwd(file.path(script_dir, "../data"))
+
+# Source the "functions.R" script
 source("functions.R")
 
-
-
 # Load the categories list from the RDS file
-categories <- readRDS("categories (3).rds")
+categories <- readRDS("categories.rds")
 
 # List all CSV files in the working directory
 csv_files <- list.files(pattern = "*.csv")
@@ -26,6 +39,16 @@ for (file in csv_files) {
 
 # Define UI
 ui <- fluidPage(
+  tags$head(
+    tags$style(
+      HTML("
+        .custom-image {
+          width: 600px;
+          height: 400px;
+        }
+      ")
+    )
+  ),
   titlePanel("Monthly Data Analysis"),
   sidebarLayout(
     sidebarPanel(
@@ -46,11 +69,16 @@ ui <- fluidPage(
           "Sentiment",
           plotOutput("sentiment_plot"),
           # Add any other output elements specific to the sentiment analysis here
+        ),
+        tabPanel(
+          "Co-occurrence",
+          imageOutput("co_occurrence_plot")
         )
       )
     )
   )
 )
+
 
 
 server <- function(input, output) {
@@ -108,6 +136,20 @@ server <- function(input, output) {
       theme_minimal()
   })
   
+  
+  
+  output$co_occurrence_plot <- renderImage({
+    # Construct the file path for the image
+    selected_date <- parse_date_time(input$selected_month, "b-y")
+    image_file <- paste0(format(selected_date, format = "%b_%Y"), ".png")
+    image_path <- file.path(getwd(), image_file)
+    
+    # Return a list with the src and alt attributes
+    list(src = image_path, alt = "Co-occurrence Plot", class = "custom-image")
+  }, deleteFile = FALSE)
+  
+  
+
   output$negative_hashtags_table <- renderTable({
     # Load the necessary data (replace with your own data loading code)
     selected_date <- parse_date_time(input$selected_month, "b-y")
