@@ -69,7 +69,7 @@ ui <- fluidPage(
         inputId = "selected_month",
         label = "Select a month:",
         choices = format(seq(as.Date("2020-01-01"), as.Date("2022-11-01"), by = "month"), format = "%b-%Y"),
-        selected = format(as.Date("2021-06-01"), format = "%b-%Y")
+        selected = format(as.Date("2022-11-01"), format = "%b-%Y")
       ),
       tags$p("Misinformation Alert", style = "font-weight: bold;"),
       verbatimTextOutput("warning"),
@@ -178,22 +178,30 @@ ui <- fluidPage(
         ),
         tabPanel(
           "Misinformation",
+          tags$h3("Average probability of misinformation for the selected month:"),
           plotOutput("misinformation_month"),
+          tags$h3("Average probability of misinformation:"),
           plotOutput("misinformation"),
+          tags$h3("Distribution of probability of misinformation per month:"),
           plotOutput("boxplots")
         ),
         tabPanel(
           "Categories",
+          tags$h3("Most common categorised entities during the selected month:"),
           plotOutput("barplot_categories")
         ),
         tabPanel(
           "Sentiment",
+          tags$h3("All time sentiment changes:"),
           plotOutput("alltime_trends"),
+          tags$h3("Sentiment change during the selected month:"),
           plotOutput("sentiment_plot")
         ),
         tabPanel(
           "Hashtags",
+          tags$h3("Co-occurrence of the most common hashtags during the selected month:"),
           imageOutput("co_occurrence_plot"),
+          tags$h3("Sentiment by hashtag:"),
           textInput(inputId = "input_hashtag", label = "Enter a hashtag:", value = ""),
           plotOutput("hashtag_plot"),
         ),
