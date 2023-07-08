@@ -182,6 +182,8 @@ ui <- fluidPage(
           plotOutput("misinformation_month"),
           tags$h3("Average probability of misinformation:"),
           plotOutput("misinformation"),
+          tags$h3("Density plot of misinformation probabiltiies per month:"),
+          plotOutput("density_plot"),
           tags$h3("Distribution of probability of misinformation per month:"),
           plotOutput("boxplots")
         ),
@@ -219,6 +221,9 @@ server <- function(input, output) {
   previous_month <- reactiveVal(0)
   selected_month <- reactiveVal(format(as.Date("2021-06-01"), format = "%b-%Y"))  # Initial selected month
   
+  # Load the ggplot2 library
+  library(ggplot2)
+  
   observeEvent(input$selected_month, {
     # Update the selected month value
     selected_month(input$selected_month)
@@ -246,8 +251,151 @@ server <- function(input, output) {
         "Misinformation unchanged"
       }
     })
-  })
     
+    # Create a density plot comparing the current and previous month
+    output$density_plot <- renderPlot({
+      # Filter selected data based on the checkboxes
+      if (input$organisations_checkbox) {
+        current_data <- current_data[current_data$Organisations > 0, ]
+      }
+      if (input$locations_checkbox) {
+        current_data <- current_data[current_data$Locations > 0, ]
+      }
+      if (input$symptoms_checkbox) {
+        current_data <- current_data[current_data$Symptoms > 0, ]
+      }
+      if (input$covid_checkbox) {
+        current_data <- current_data[current_data$COVID > 0, ]
+      }
+      if (input$vaccination_checkbox) {
+        current_data <- current_data[current_data$Vaccination > 0, ]
+      }
+      if (input$politics_checkbox) {
+        current_data <- current_data[current_data$Politics > 0, ]
+      }
+      if (input$conspiracy_checkbox) {
+        current_data <- current_data[current_data$Conspiracy > 0, ]
+      }
+      if (input$slurs_checkbox) {
+        current_data <- current_data[current_data$Slurs > 0, ]
+      }
+      if (input$masks_checkbox) {
+        current_data <- current_data[current_data$Masks > 0, ]
+      }
+      if (input$origin_checkbox) {
+        current_data <- current_data[current_data$origin > 0, ]
+      }
+      if (input$vaccine_conspiracy_checkbox) {
+        current_data <- current_data[current_data$vaccine_conspiracy > 0, ]
+      }
+      if (input$government_checkbox) {
+        current_data <- current_data[current_data$government > 0, ]
+      }
+      if (input$pharma_checkbox) {
+        current_data <- current_data[current_data$pharma > 0, ]
+      }
+      if (input$five_g_checkbox) {
+        current_data <- current_data[current_data$Five_G > 0, ]
+      }
+      if (input$gates_checkbox) {
+        current_data <- current_data[current_data$gates > 0, ]
+      }
+      if (input$nwo_checkbox) {
+        current_data <- current_data[current_data$nwo > 0, ]
+      }
+      if (input$media_checkbox) {
+        current_data <- current_data[current_data$media > 0, ]
+      }
+      
+      
+      # Plot the density of misinformation for the selected data
+      plot1 <- ggplot(current_data, aes(x = misinformation)) +
+        geom_density(fill = "blue", alpha = 0.5) +
+        scale_x_continuous(limits = c(0, 1)) +
+        geom_vline(aes(xintercept = current_mean, color = "Current Month"), linetype = "dashed") +
+        labs(
+          title = paste0("Density of Misinformation - ", input$selected_month),
+          x = "Misinformation",
+          y = "Density"
+        ) +
+        scale_color_manual(values = "red", guide = guide_legend(title = "Mean")) +
+        theme_minimal()
+      
+      # Filter previous month selected data based on the checkboxes
+      if (input$organisations_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Organizations > 0, ]
+      }
+      if (input$locations_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Locations > 0, ]
+      }
+      if (input$symptoms_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Symptoms > 0, ]
+      }
+      if (input$covid_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$COVID > 0, ]
+      }
+      if (input$vaccination_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Vaccination > 0, ]
+      }
+      if (input$politics_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Politics > 0, ]
+      }
+      if (input$conspiracy_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Conspiracy > 0, ]
+      }
+      if (input$slurs_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Slurs > 0, ]
+      }
+      if (input$masks_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Masks > 0, ]
+      }
+      if (input$origin_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$origin > 0, ]
+      }
+      if (input$vaccine_conspiracy_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$vaccine_conspiracy > 0, ]
+      }
+      if (input$government_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$government > 0, ]
+      }
+      if (input$pharma_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$pharma > 0, ]
+      }
+      if (input$five_g_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$Five_G > 0, ]
+      }
+      if (input$gates_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$gates > 0, ]
+      }
+      if (input$nwo_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$nw0 > 0, ]
+      }
+      if (input$media_checkbox) {
+        previous_month_data <- previous_month_data[previous_month_data$media > 0, ]
+      }
+      
+      # Add similar filtering for other checkboxes...
+      
+      
+      # Plot the density of misinformation for the previous month selected data
+      plot2 <- ggplot(previous_month_data, aes(x = misinformation)) +
+        geom_density(fill = "green", alpha = 0.5) +
+        scale_x_continuous(limits = c(0, 1)) +
+        geom_vline(aes(xintercept = previous_mean, color = "Previous Month"), linetype = "dashed") +
+        labs(
+          title = paste0("Density of Misinformation - ", format(previous_date, "%b-%Y")),
+          x = "Misinformation",
+          y = "Density"
+        ) +
+        scale_color_manual(values = "red", guide = guide_legend(title = "Mean")) +
+        theme_minimal()
+      
+      # Combine the two density plots using grid.arrange
+      library(gridExtra)
+      grid.arrange(plot1, plot2, ncol = 2)
+    })
+  })
+  
   output$boxplots <- renderPlot({
     # Convert Month-Year labels to Date class and define custom order
     global_trends$MonthYear <- as.Date(paste0("01-", format(global_trends$date, "%b-%Y")), format = "%d-%b-%Y")
