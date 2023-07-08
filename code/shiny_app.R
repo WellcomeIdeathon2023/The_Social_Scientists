@@ -45,7 +45,7 @@ for (file in csv_files) {
 
 # Get global dataset to use for global trends tab
 global_trends <- read.csv("vax_tweets_6.csv")
-
+global_trends$date = as.Date(global_trends$date)
 
 # Apply the function to the dataframe
 gt2 <- analyze_hashtag(global_trends, "hashtags", "'vaccine'")
@@ -69,8 +69,19 @@ ui <- fluidPage(
         inputId = "selected_month",
         label = "Select a month:",
         choices = format(seq(as.Date("2020-01-01"), as.Date("2022-11-01"), by = "month"), format = "%b-%Y"),
-        selected = format(as.Date("2020-01-01"), format = "%b-%Y")
-      )
+        selected = format(as.Date("2021-06-01"), format = "%b-%Y")
+      ),
+      checkboxInput(
+        inputId = "pharma_checkbox",
+        label = "Pharma",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "politics_checkbox",
+        label = "Politics",
+        value = FALSE
+      ),
+      verbatimTextOutput("warning") 
     ),
     mainPanel(
       tabsetPanel(
@@ -79,23 +90,21 @@ ui <- fluidPage(
           plotOutput("barplot_categories")
         ),
         tabPanel(
-          "Sentiment",
+          "Sentiment and Misinformation - Selected Month",
           plotOutput("sentiment_plot"),
-          # Add any other output elements specific to the sentiment analysis here
+          plotOutput("misinformation_month")
         ),
         tabPanel(
-          "Co-occurrence",
-          imageOutput("co_occurrence_plot")
-        ),
-        tabPanel(
-          "All-Time Trends",
+          "Sentiment and Misinformation - All time",
           plotOutput("alltime_trends"),
-          plotOutput("misinformation")
+          plotOutput("misinformation"),
+          plotOutput("boxplots")
         ),
         tabPanel(
-          "All-Time Hashtag Analysis",
+          "Hashtags",
+          imageOutput("co_occurrence_plot"),
           textInput(inputId = "input_hashtag", label = "Enter a hashtag:", value = ""),
-          plotOutput("hashtag_plot")
+          plotOutput("hashtag_plot"),
         ),
       )
     )
@@ -106,6 +115,57 @@ ui <- fluidPage(
 
 server <- function(input, output) { 
   
+  # Create reactive values for storing the selected month and mean misinformation
+  current_month <- reactiveVal(0)
+  previous_month <- reactiveVal(0)
+  selected_month <- reactiveVal(format(as.Date("2021-06-01"), format = "%b-%Y"))  # Initial selected month
+  
+  observeEvent(input$selected_month, {
+    # Update the selected month value
+    selected_month(input$selected_month)
+    
+    # Store the current month value
+    selected_date <- parse_date_time(input$selected_month, "b-%Y")
+    current_data <- global_trends[format(global_trends$date, "%b-%Y") == input$selected_month, ]
+    current_mean <- mean(current_data$misinformation)
+    current_month(current_mean)
+    
+    # Calculate the previous month value
+    previous_date <- selected_date %m-% months(1)
+    previous_month_data <- global_trends[format(global_trends$date, "%b-%Y") == format(previous_date, "%b-%Y"), ]
+    previous_mean <- mean(previous_month_data$misinformation)
+    previous_month(previous_mean)
+    
+    # Calculate confidence interval for the previous month mean
+    previous_ci <- t.test(previous_month_data$misinformation)$conf.int
+    
+    # Compare current month mean with confidence interval for previous month mean and display warning
+    output$warning <- renderText({
+      if (current_month() > previous_ci[2]) {
+        "Misinformation high!"
+      } else {
+        "Misinformation unchanged"
+      }
+    })
+  })
+    
+  output$boxplots <- renderPlot({
+    # Convert Month-Year labels to Date class and define custom order
+    global_trends$MonthYear <- as.Date(paste0("01-", format(global_trends$date, "%b-%Y")), format = "%d-%b-%Y")
+    custom_order <- format(seq(as.Date("2020-01-01"), as.Date("2022-11-01"), by = "month"), format = "%b-%Y")
+    
+    # Create boxplots for each month of misinformation values
+    p <- ggplot(global_trends, aes(x = factor(format(date, "%b-%Y"), levels = custom_order, ordered = TRUE), y = misinformation)) +
+      geom_boxplot(fill = ifelse(format(date, "%b-%Y") == selected_month() && current_month() > previous_month(), "red", "gray")) +
+      labs(x = "Month-Year", y = "Misinformation") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    
+    p
+  })
+  
+  
+  
   # Generate the plots
   output$barplot_categories <- renderPlot({
     category_counts <- processEntitiesData(input$selected_month)
@@ -115,6 +175,14 @@ server <- function(input, output) {
       labs(x = "Category", y = "Count") +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+  
+  output$misinformation_month <- renderPlot({
+    selected_date <- parse_date_time(input$selected_month, "b-%Y")
+    selected_data <- global_trends[format(global_trends$date, "%b_%Y") == format(selected_date, "%b_%Y"), ]
+    
+    misinfo_graph <- misinformation_month(selected_data)
+    misinfo_graph
   })
   
   output$sentiment_plot <- renderPlot({
@@ -248,6 +316,7 @@ server <- function(input, output) {
       theme_minimal()
   })
   
+  
   output$hashtag_plot <- renderPlot({
     if (input$input_hashtag != "") {
       hashtag_data <- analyze_hashtag(global_trends, "hashtags", paste0("'",input$input_hashtag,"'"))
@@ -289,3 +358,4 @@ server <- function(input, output) {
 
 # Run the app
 shinyApp(ui = ui, server = server)
+
