@@ -42,8 +42,6 @@ while (current_date <= end_date) {
   current_date <- current_date + months(1)
 }
 
-# Output directory for saving RDS files
-output_dir <- "output_directory"
 
 # Iterate through the datasets
 for (dataset_name in names(datasets)) {

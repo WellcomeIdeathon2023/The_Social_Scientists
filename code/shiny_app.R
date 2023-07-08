@@ -12,18 +12,11 @@ library(visNetwork)
 library(here)
 
 
-
-
 # Get the directory of the R script
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
 # Set the working directory
 setwd(file.path(script_dir, "../data"))
-
-# setwd("D:/Programming/Projects/The_Social_Scientists/The_Social_Scientists/data")
-
-
-#setwd("D:/Programming/Projects/The_Social_Scientists/The_Social_Scientists/data")
 
 # Source the "functions.R" script
 source("functions.R")
@@ -201,6 +194,7 @@ ui <- fluidPage(
         ),
         tabPanel(
           "Hashtags",
+          plotOutput("hashtags_by_category"),
           tags$h3("Co-occurrence of the most common hashtags during the selected month:"),
           imageOutput("co_occurrence_plot"),
           tags$h3("Sentiment by hashtag:"),
@@ -562,7 +556,130 @@ server <- function(input, output) {
       theme_minimal()
   })
   
-  
+  output$hashtags_by_category <- renderPlot({
+    selected_date <- parse_date_time(input$selected_month, "b-y")
+    file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+    data <- get(file_name)
+    
+    
+    # Check if "Organisations" checkbox is checked
+    if (input$organisations_checkbox) {
+      data <- data[data$Organizations > 0, ]
+    }
+    
+    # Check if "Locations" checkbox is checked
+    if (input$locations_checkbox) {
+      data <- data[data$Locations > 0, ]
+    }
+    
+    # Check if "Symptoms" checkbox is checked
+    if (input$symptoms_checkbox) {
+      data <- data[data$Symptoms > 0, ]
+    }
+    
+    # Check if "COVID" checkbox is checked
+    if (input$covid_checkbox) {
+      data <- data[data$COVID > 0, ]
+    }
+    
+    # Check if "Vaccination" checkbox is checked
+    if (input$vaccination_checkbox) {
+      data <- data[data$Vaccination > 0, ]
+    }
+    
+    # Check if "Politics" checkbox is checked
+    if (input$politics_checkbox) {
+      data <- data[data$Politics > 0, ]
+    }
+    
+    # Check if "Conspiracy" checkbox is checked
+    if (input$conspiracy_checkbox) {
+      data <- data[data$Conspiracy > 0, ]
+    }
+    
+    # Check if "Slurs" checkbox is checked
+    if (input$slurs_checkbox) {
+      data <- data[data$Slurs > 0, ]
+    }
+    
+    # Check if "Masks" checkbox is checked
+    if (input$masks_checkbox) {
+      data <- data[data$Masks > 0, ]
+    }
+    
+    # Check if "Origin" checkbox is checked
+    if (input$origin_checkbox) {
+      data <- data[data$origin > 0, ]
+    }
+    
+    # Check if "Vaccine Conspiracy" checkbox is checked
+    if (input$vaccine_conspiracy_checkbox) {
+      data <- data[data$vaccine_conspiracy > 0, ]
+    }
+    
+    # Check if "Government" checkbox is checked
+    if (input$government_checkbox) {
+      data <- data[data$government > 0, ]
+    }
+    
+    # Check if "Pharma" checkbox is checked
+    if (input$pharma_checkbox) {
+      data <- data[data$pharma > 0, ]
+    }
+    
+    # Check if "Five_G" checkbox is checked
+    if (input$five_g_checkbox) {
+      data <- data[data$Five_G > 0, ]
+    }
+    
+    # Check if "Gates" checkbox is checked
+    if (input$gates_checkbox) {
+      data <- data[data$gates > 0, ]
+    }
+    
+    # Check if "NWO" checkbox is checked
+    if (input$nwo_checkbox) {
+      data <- data[data$nwo > 0, ]
+    }
+    
+    # Check if "Media" checkbox is checked
+    if (input$media_checkbox) {
+      data <- data[data$media > 0, ]
+    }
+    
+    
+    all_hashtags <- unlist(str_extract_all(data$hashtags, "\\w+"))
+    
+    # Find the two most common hashtags
+    top_hashtags <- head(sort(table(all_hashtags), decreasing = TRUE), 10)
+    most_common_hashtags <- names(top_hashtags)
+    
+    # Create new variables for the most common hashtags
+    for (hashtag in most_common_hashtags) {
+      hashtag_column <- paste0("hashtag_", hashtag)  # Add prefix "hashtag_" to the column name
+      data[[hashtag_column]] <- ifelse(grepl(hashtag, data$hashtags), 1, 0)
+    }
+    
+    library(ggplot2)
+    
+    hashtag_columns <- data[, grepl("^hashtag_", colnames(data))]
+    hashtag_counts <- colSums(hashtag_columns)
+    
+    # Sort the hashtags by count in descending order
+    sorted_hashtags <- sort(hashtag_counts, decreasing = TRUE)
+    
+    # Remove the "hashtag_" prefix from the names
+    hashtag_names <- sub("^hashtag_", "", names(sorted_hashtags))
+    
+    # Create a data frame for plotting
+    plot_data <- data.frame(Hashtags = hashtag_names, Counts = sorted_hashtags)
+    
+    # Create the bar plot using ggplot2
+    ggplot(plot_data, aes(x = reorder(Hashtags, -Counts), y = Counts)) +
+      geom_bar(stat = "identity", fill = "steelblue") +
+      labs(x = "Hashtags", y = "Counts", title = "Counts of Hashtags") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
   
   output$co_occurrence_plot <- renderImage({
     # Construct the file path for the image
