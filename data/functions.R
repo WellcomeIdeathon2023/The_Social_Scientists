@@ -218,4 +218,30 @@ analyze_hashtag <- function(df, column_name, hashtag){
   
   # Return the modified dataframe
   return(df)
+<<<<<<< Updated upstream
+=======
+}
+
+misinformation = function(final_data){
+  
+  final_data$date <- as.Date(final_data$date)
+  
+  # Step 2: Sort the data frame by date
+  library(dplyr)
+  final_data <- final_data %>%
+    arrange(date)
+  
+  # Step 3: Calculate the 10-day rolling average of 'misinformation' by date
+  library(zoo)
+  final_data <- final_data %>%
+    group_by(date) %>%
+    summarise(misinformation_avg = mean(misinformation)) %>%
+    mutate(misinformation_avg_10 = rollmean(misinformation_avg, k = 10, fill = NA, align = "right", by = "1 day"))
+  
+  # Step 4: Create a line plot of the 10-day average over time
+  graph = plot(final_data$date, final_data$misinformation_avg_10, type = "l", xlab = "Date", ylab = "10-day Average of Misinformation", 
+       main = "10-day Average of Misinformation Over Time")
+  return(graph)
+  
+>>>>>>> Stashed changes
 }
