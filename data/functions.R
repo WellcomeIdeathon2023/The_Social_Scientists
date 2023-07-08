@@ -22,10 +22,23 @@ processEntitiesData <- function(selected_month) {
 }
 
 # Define the function that sums up positive sentiment over time
-compute_sums_every_five_days <- function(df) {
+compute_sums_every_one_day <- function(df) {
   df %>%
     mutate(date = as.Date(date),  # Convert 'date' to Date object
-           date_interval = floor_date(date, "3 days")) %>%  # Create 'date_interval' column
+           date_interval = floor_date(date, "1 days")) %>%  # Create 'date_interval' column
+    group_by(date_interval) %>%
+    summarise(sum_favourites_pos = sum(user_favourites[polarity_text > 0.1], na.rm = TRUE), # Compute sum of 'user_favourites' for negative tweets
+              sum_favourites_neg = sum(user_favourites[polarity_text < -0.1], na.rm = TRUE), # Compute sum of 'user_favourites' for negative tweets
+              sum_favourites_all = sum(user_favourites, na.rm = TRUE)) %>%  # Compute total sum of 'user_favourites'
+    mutate(normalized_pos = sum_favourites_pos / sum_favourites_all)  %>%
+    mutate(normalized_neg = sum_favourites_neg / sum_favourites_all)
+}
+
+# Define the function that sums up positive sentiment over time
+compute_sums_every_thirty_days <- function(df) {
+  df %>%
+    mutate(date = as.Date(date),  # Convert 'date' to Date object
+           date_interval = floor_date(date, "30 days")) %>%  # Create 'date_interval' column
     group_by(date_interval) %>%
     summarise(sum_favourites_pos = sum(user_favourites[polarity_text > 0.1], na.rm = TRUE), # Compute sum of 'user_favourites' for negative tweets
               sum_favourites_neg = sum(user_favourites[polarity_text < -0.1], na.rm = TRUE), # Compute sum of 'user_favourites' for negative tweets
@@ -38,10 +51,8 @@ compute_sums_every_five_days <- function(df) {
 label_high_periods <- function(df) {
   df %<>%
     arrange(date_interval) %>%  # Ensure data is ordered by date
-    mutate(rolling_mean_pos = rollapply(normalized_pos, width = 10, FUN = mean, align = "right", fill = NA),  # Calculate rolling mean of past 3 periods for positive tweets
-           rolling_mean_neg = rollapply(normalized_neg, width = 10, FUN = mean, align = "right", fill = NA),  # Calculate rolling mean of past 3 periods for negative tweets
-           high_pos = ifelse(normalized_pos > 2 * lag(rolling_mean_pos), TRUE, FALSE),  # Identify high periods for positive tweets
-           high_neg = ifelse(normalized_neg > 2 * lag(rolling_mean_neg), TRUE, FALSE))  # Identify high periods for negative tweets
+    mutate(change_neg = normalized_neg - lag(normalized_neg, default = first(normalized_neg)), # Calculate the rate of increase
+           high_neg = ifelse(change_neg > 0.1, TRUE, FALSE))  # Identify peaks where negative sentiment increased more than 0.1
   df <- replace(df, is.na(df), 0)
   return(df)
 }
@@ -176,4 +187,35 @@ hashtag_cooccurrence = function(data){
   # Plot the co-occurrence graph
   graph1 = plot(graph, vertex.label = V(graph)$name, vertex.size = V(graph)$size, edge.width = E(graph)$width, layout = layout.fruchterman.reingold)
   return(graph1)
+}
+
+
+# Plots the number of tweets and sentiments for a hashtag in specific
+analyze_hashtag <- function(df, column_name, hashtag){
+  # Remove the square brackets and split by comma
+  df <- df %>%
+    mutate(!!rlang::sym(column_name) := str_replace_all(!!rlang::sym(column_name), "\\[|\\]", "")) %>%
+    mutate(!!rlang::sym(column_name) := strsplit(!!rlang::sym(column_name), ", "))
+  
+  # "Explode" the list into multiple rows
+  df <- df %>%
+    unnest(!!rlang::sym(column_name))
+  
+  # Filter rows with the specified hashtag
+  df <- df %>%
+    filter(!!rlang::sym(column_name) == hashtag)
+  
+  # Extract year and month from date
+  df <- df %>%
+    mutate(date = as.Date(date),  # Convert 'date' to Date object
+           date_interval = floor_date(date, "30 days")) %>%  # Create 'date_interval' column
+    group_by(date_interval) %>%
+    summarise(sum_favourites_pos = sum(user_favourites[polarity_text > 0.1], na.rm = TRUE), # Compute sum of 'user_favourites' for negative tweets
+              sum_favourites_neg = sum(user_favourites[polarity_text < -0.1], na.rm = TRUE), # Compute sum of 'user_favourites' for negative tweets
+              sum_favourites_all = sum(user_favourites, na.rm = TRUE)) %>%  # Compute total sum of 'user_favourites'
+    mutate(normalized_pos = sum_favourites_pos / sum_favourites_all)  %>%
+    mutate(normalized_neg = sum_favourites_neg / sum_favourites_all)
+  
+  # Return the modified dataframe
+  return(df)
 }

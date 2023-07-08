@@ -13,11 +13,14 @@ library(here)
 
 
 
+
 # Get the directory of the R script
-script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
+#script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
 # Set the working directory
-setwd(file.path(script_dir, "../data"))
+#setwd(file.path(script_dir, "../data"))
+
+setwd("D:/Programming/Projects/The_Social_Scientists/The_Social_Scientists/data")
 
 # Source the "functions.R" script
 source("functions.R")
@@ -36,6 +39,13 @@ for (file in csv_files) {
   # Read the CSV file and assign it to a named object using the month-year as the name
   assign(paste0("data_", month_year), read.csv(file))
 }
+
+# Get global dataset to use for global trends tab
+global_trends <- read.csv("vax_tweets_5.csv")
+
+
+# Apply the function to the dataframe
+gt2 <- analyze_hashtag(global_trends, "hashtags", "'vaccine'")
 
 # Define UI
 ui <- fluidPage(
@@ -73,7 +83,16 @@ ui <- fluidPage(
         tabPanel(
           "Co-occurrence",
           imageOutput("co_occurrence_plot")
-        )
+        ),
+        tabPanel(
+          "All-Time Trends",
+          plotOutput("alltime_trends"),
+        ),
+        tabPanel(
+          "All-Time Hashtag Analysis",
+          textInput(inputId = "input_hashtag", label = "Enter a hashtag:", value = ""),
+          plotOutput("hashtag_plot")
+        ),
       )
     )
   )
@@ -81,8 +100,7 @@ ui <- fluidPage(
 
 
 
-server <- function(input, output) {
-  source("functions.R")
+server <- function(input, output) { 
   
   # Generate the plots
   output$barplot_categories <- renderPlot({
@@ -102,7 +120,7 @@ server <- function(input, output) {
     data <- get(file_name)
     
     # Compute the sums every five days
-    fiveday_sums <- compute_sums_every_five_days(data)
+    fiveday_sums <- compute_sums_every_one_day(data)
     
     # Label high periods
     fiveday_sums <- label_high_periods(fiveday_sums)
@@ -172,6 +190,77 @@ server <- function(input, output) {
     timeframe_start <- "2020-01-01"
     timeframe_end <- "2020-06-30"
     get_correlated_negative_hashtags(data, timeframe_start, timeframe_end)
+  })
+  
+  output$alltime_trends <- renderPlot({
+    # Load the necessary data (replace with your own data loading code)
+    data <- global_trends
+    
+    # Compute the sums every five days
+    fiveday_sums <- compute_sums_every_thirty_days(data)
+    
+    # Label high periods
+    fiveday_sums <- label_high_periods(fiveday_sums)
+    
+    # Create a new data frame for high_neg == TRUE
+    high_neg_dates <- fiveday_sums %>%
+      filter(high_neg == TRUE) %>%
+      select(date_interval,normalized_neg,sum_favourites_neg)
+    
+    # Plot the sentiment over time
+    ggplot(fiveday_sums, aes(x = date_interval)) +
+      geom_line(aes(y = normalized_pos), color = 'blue') +
+      geom_line(aes(y = normalized_neg), color = 'red') +
+      geom_point(
+        data = high_neg_dates,
+        aes(x = date_interval, y = normalized_neg),
+        color = "black",
+        size = 3
+      ) +
+      geom_text(
+        data = high_neg_dates,
+        aes(x = date_interval, y = normalized_neg),
+        label = "Negative Peak",
+        vjust = -1,
+        hjust = 0.2,
+        size = 3,
+        color = "black"
+      ) +
+      labs(
+        title = "Normalized Sentiment Over Time",
+        x = "Date Interval",
+        y = "Normalized Sentiment Score",
+        color = "Legend"
+      ) +
+      scale_x_date(date_breaks = "3 months", date_labels = "%,b %Y") +
+      scale_color_manual(
+        values = c("blue", "red"),
+        labels = c("Positive", "Negative","All")
+      ) +
+      theme_minimal()
+  })
+  
+  output$hashtag_plot <- renderPlot({
+    if (input$input_hashtag != "") {
+      hashtag_data <- analyze_hashtag(global_trends, "hashtags", paste0("'",input$input_hashtag,"'"))
+      # Plot the sentiment over time
+      ggplot(hashtag_data, aes(x = date_interval)) +
+        geom_line(aes(y = sum_favourites_pos), color = 'blue') +
+        geom_line(aes(y = sum_favourites_neg), color = 'red') +
+        geom_line(aes(y = sum_favourites_all), color = 'black') +
+        labs(
+          title = "Normalized Sentiment Over Time",
+          x = "Date Interval",
+          y = "Number of Tweets",
+          color = "Legend"
+        ) +
+        scale_x_date(date_breaks = "3 months", date_labels = "%,b %Y") +
+        scale_color_manual(
+          values = c("blue", "red","black"),
+          labels = c("Positive", "Negative","All")
+        ) +
+        theme_minimal()
+    }
   })
   
   # Helper function to process the data and generate the category_counts
