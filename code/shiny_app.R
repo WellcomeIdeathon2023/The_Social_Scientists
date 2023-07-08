@@ -15,21 +15,15 @@ library(here)
 
 
 # Get the directory of the R script
-<<<<<<< Updated upstream
-#script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
-
-# Set the working directory
-#setwd(file.path(script_dir, "../data"))
-
-setwd("D:/Programming/Projects/The_Social_Scientists/The_Social_Scientists/data")
-=======
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
 # Set the working directory
 setwd(file.path(script_dir, "../data"))
 
+# setwd("D:/Programming/Projects/The_Social_Scientists/The_Social_Scientists/data")
+
+
 #setwd("D:/Programming/Projects/The_Social_Scientists/The_Social_Scientists/data")
->>>>>>> Stashed changes
 
 # Source the "functions.R" script
 source("functions.R")
@@ -50,11 +44,7 @@ for (file in csv_files) {
 }
 
 # Get global dataset to use for global trends tab
-<<<<<<< Updated upstream
-global_trends <- read.csv("vax_tweets_5.csv")
-=======
 global_trends <- read.csv("vax_tweets_6.csv")
->>>>>>> Stashed changes
 
 
 # Apply the function to the dataframe
@@ -100,10 +90,7 @@ ui <- fluidPage(
         tabPanel(
           "All-Time Trends",
           plotOutput("alltime_trends"),
-<<<<<<< Updated upstream
-=======
           plotOutput("misinformation")
->>>>>>> Stashed changes
         ),
         tabPanel(
           "All-Time Hashtag Analysis",
@@ -184,15 +171,11 @@ server <- function(input, output) {
   }, deleteFile = FALSE)
   
   
-<<<<<<< Updated upstream
-
-=======
   output$misinformation = renderPlot({
     misinfo_graph = misinformation(global_trends)
     misinfo_graph
   })
   
->>>>>>> Stashed changes
   output$negative_hashtags_table <- renderTable({
     # Load the necessary data (replace with your own data loading code)
     selected_date <- parse_date_time(input$selected_month, "b-y")
