@@ -71,9 +71,32 @@ ui <- fluidPage(
         choices = format(seq(as.Date("2020-01-01"), as.Date("2022-11-01"), by = "month"), format = "%b-%Y"),
         selected = format(as.Date("2021-06-01"), format = "%b-%Y")
       ),
+      tags$p("Misinformation Alert", style = "font-weight: bold;"),
+      verbatimTextOutput("warning"),
+      tags$p("Choose Category", style = "font-weight: bold;"),
       checkboxInput(
-        inputId = "pharma_checkbox",
-        label = "Pharma",
+        inputId = "organisations_checkbox",
+        label = "Organisations",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "locations_checkbox",
+        label = "Locations",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "symptoms_checkbox",
+        label = "Symptoms",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "covid_checkbox",
+        label = "COVID",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "vaccination_checkbox",
+        label = "Vaccination",
         value = FALSE
       ),
       checkboxInput(
@@ -81,24 +104,92 @@ ui <- fluidPage(
         label = "Politics",
         value = FALSE
       ),
-      verbatimTextOutput("warning") 
+      checkboxInput(
+        inputId = "conspiracy_checkbox",
+        label = "Conspiracy",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "slurs_checkbox",
+        label = "Slurs",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "masks_checkbox",
+        label = "Masks",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "origin_checkbox",
+        label = "Origin",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "vaccine_conspiracy_checkbox",
+        label = "Vaccine Conspiracy",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "government_checkbox",
+        label = "Government",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "pharma_checkbox",
+        label = "Pharma",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "five_g_checkbox",
+        label = "Five_G",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "gates_checkbox",
+        label = "Gates",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "nwo_checkbox",
+        label = "NWO",
+        value = FALSE
+      ),
+      checkboxInput(
+        inputId = "media_checkbox",
+        label = "Media",
+        value = FALSE
+      )
     ),
     mainPanel(
       tabsetPanel(
+        tabPanel("Instructions",
+                 # Use tags to include formatted text in the tab
+                 tags$div(
+                   tags$h3("Welcome to the Misinformation Detector"),
+                   tags$p("This app allows you to analyze and visualize data related COVID19 vaccine related information and misinformation"),
+                   tags$p("To use the app, follow these steps:"),
+                   tags$ol(
+                     tags$li("Step 1: Select the desired month using the dropdown menu."),
+                     tags$li("Step 2: Filter by specified categories using the checkbox."),
+                   ),
+                   tags$p("The app will output a warning if misinformation is significantly higher than the previous month"),
+                   tags$p("We also offer visualisation related to hashtags, including co-occurrences"),
+                 )
+        ),
+        tabPanel(
+          "Misinformation",
+          plotOutput("misinformation_month"),
+          plotOutput("misinformation"),
+          plotOutput("boxplots")
+        ),
         tabPanel(
           "Categories",
           plotOutput("barplot_categories")
         ),
         tabPanel(
-          "Sentiment and Misinformation - Selected Month",
-          plotOutput("sentiment_plot"),
-          plotOutput("misinformation_month")
-        ),
-        tabPanel(
-          "Sentiment and Misinformation - All time",
+          "Sentiment",
           plotOutput("alltime_trends"),
-          plotOutput("misinformation"),
-          plotOutput("boxplots")
+          plotOutput("sentiment_plot")
         ),
         tabPanel(
           "Hashtags",
@@ -179,11 +270,100 @@ server <- function(input, output) {
   
   output$misinformation_month <- renderPlot({
     selected_date <- parse_date_time(input$selected_month, "b-%Y")
+    
+    # Filter data based on selected month
     selected_data <- global_trends[format(global_trends$date, "%b_%Y") == format(selected_date, "%b_%Y"), ]
+    
+    # Check if "Organisations" checkbox is checked
+    if (input$organisations_checkbox) {
+      selected_data <- selected_data[selected_data$Organizations > 0, ]
+    }
+    
+    # Check if "Locations" checkbox is checked
+    if (input$locations_checkbox) {
+      selected_data <- selected_data[selected_data$Locations > 0, ]
+    }
+    
+    # Check if "Symptoms" checkbox is checked
+    if (input$symptoms_checkbox) {
+      selected_data <- selected_data[selected_data$Symptoms > 0, ]
+    }
+    
+    # Check if "COVID" checkbox is checked
+    if (input$covid_checkbox) {
+      selected_data <- selected_data[selected_data$COVID > 0, ]
+    }
+    
+    # Check if "Vaccination" checkbox is checked
+    if (input$vaccination_checkbox) {
+      selected_data <- selected_data[selected_data$Vaccination > 0, ]
+    }
+    
+    # Check if "Politics" checkbox is checked
+    if (input$politics_checkbox) {
+      selected_data <- selected_data[selected_data$Politics > 0, ]
+    }
+    
+    # Check if "Conspiracy" checkbox is checked
+    if (input$conspiracy_checkbox) {
+      selected_data <- selected_data[selected_data$Conspiracy > 0, ]
+    }
+    
+    # Check if "Slurs" checkbox is checked
+    if (input$slurs_checkbox) {
+      selected_data <- selected_data[selected_data$Slurs > 0, ]
+    }
+    
+    # Check if "Masks" checkbox is checked
+    if (input$masks_checkbox) {
+      selected_data <- selected_data[selected_data$Masks > 0, ]
+    }
+    
+    # Check if "Origin" checkbox is checked
+    if (input$origin_checkbox) {
+      selected_data <- selected_data[selected_data$origin > 0, ]
+    }
+    
+    # Check if "Vaccine Conspiracy" checkbox is checked
+    if (input$vaccine_conspiracy_checkbox) {
+      selected_data <- selected_data[selected_data$vaccine_conspiracy > 0, ]
+    }
+    
+    # Check if "Government" checkbox is checked
+    if (input$government_checkbox) {
+      selected_data <- selected_data[selected_data$government > 0, ]
+    }
+    
+    # Check if "Pharma" checkbox is checked
+    if (input$pharma_checkbox) {
+      selected_data <- selected_data[selected_data$pharma > 0, ]
+    }
+    
+    # Check if "Five_G" checkbox is checked
+    if (input$five_g_checkbox) {
+      selected_data <- selected_data[selected_data$Five_G > 0, ]
+    }
+    
+    # Check if "Gates" checkbox is checked
+    if (input$gates_checkbox) {
+      selected_data <- selected_data[selected_data$gates > 0, ]
+    }
+    
+    # Check if "NWO" checkbox is checked
+    if (input$nwo_checkbox) {
+      selected_data <- selected_data[selected_data$nwo > 0, ]
+    }
+    
+    # Check if "Media" checkbox is checked
+    if (input$media_checkbox) {
+      selected_data <- selected_data[selected_data$media > 0, ]
+    }
+    
     
     misinfo_graph <- misinformation_month(selected_data)
     misinfo_graph
   })
+  
   
   output$sentiment_plot <- renderPlot({
     # Load the necessary data (replace with your own data loading code)
@@ -240,7 +420,96 @@ server <- function(input, output) {
   
   
   output$misinformation = renderPlot({
-    misinfo_graph = misinformation(global_trends)
+    
+    # Filter data based on selected month
+    selected_data <- global_trends
+    
+    # Check if "Organisations" checkbox is checked
+    if (input$organisations_checkbox) {
+      selected_data <- selected_data[selected_data$Organizations > 0, ]
+    }
+    
+    # Check if "Locations" checkbox is checked
+    if (input$locations_checkbox) {
+      selected_data <- selected_data[selected_data$Locations > 0, ]
+    }
+    
+    # Check if "Symptoms" checkbox is checked
+    if (input$symptoms_checkbox) {
+      selected_data <- selected_data[selected_data$Symptoms > 0, ]
+    }
+    
+    # Check if "COVID" checkbox is checked
+    if (input$covid_checkbox) {
+      selected_data <- selected_data[selected_data$COVID > 0, ]
+    }
+    
+    # Check if "Vaccination" checkbox is checked
+    if (input$vaccination_checkbox) {
+      selected_data <- selected_data[selected_data$Vaccination > 0, ]
+    }
+    
+    # Check if "Politics" checkbox is checked
+    if (input$politics_checkbox) {
+      selected_data <- selected_data[selected_data$Politics > 0, ]
+    }
+    
+    # Check if "Conspiracy" checkbox is checked
+    if (input$conspiracy_checkbox) {
+      selected_data <- selected_data[selected_data$Conspiracy > 0, ]
+    }
+    
+    # Check if "Slurs" checkbox is checked
+    if (input$slurs_checkbox) {
+      selected_data <- selected_data[selected_data$Slurs > 0, ]
+    }
+    
+    # Check if "Masks" checkbox is checked
+    if (input$masks_checkbox) {
+      selected_data <- selected_data[selected_data$Masks > 0, ]
+    }
+    
+    # Check if "Origin" checkbox is checked
+    if (input$origin_checkbox) {
+      selected_data <- selected_data[selected_data$origin > 0, ]
+    }
+    
+    # Check if "Vaccine Conspiracy" checkbox is checked
+    if (input$vaccine_conspiracy_checkbox) {
+      selected_data <- selected_data[selected_data$vaccine_conspiracy > 0, ]
+    }
+    
+    # Check if "Government" checkbox is checked
+    if (input$government_checkbox) {
+      selected_data <- selected_data[selected_data$government > 0, ]
+    }
+    
+    # Check if "Pharma" checkbox is checked
+    if (input$pharma_checkbox) {
+      selected_data <- selected_data[selected_data$pharma > 0, ]
+    }
+    
+    # Check if "Five_G" checkbox is checked
+    if (input$five_g_checkbox) {
+      selected_data <- selected_data[selected_data$Five_G > 0, ]
+    }
+    
+    # Check if "Gates" checkbox is checked
+    if (input$gates_checkbox) {
+      selected_data <- selected_data[selected_data$gates > 0, ]
+    }
+    
+    # Check if "NWO" checkbox is checked
+    if (input$nwo_checkbox) {
+      selected_data <- selected_data[selected_data$nwo > 0, ]
+    }
+    
+    # Check if "Media" checkbox is checked
+    if (input$media_checkbox) {
+      selected_data <- selected_data[selected_data$media > 0, ]
+    }
+    
+    misinfo_graph <- misinformation(selected_data)
     misinfo_graph
   })
   
