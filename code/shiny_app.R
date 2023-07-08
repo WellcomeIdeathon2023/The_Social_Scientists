@@ -19,7 +19,7 @@ script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(file.path(script_dir, "../data"))
 
 # Source the "functions.R" script
-source("functions.R")
+source(file.path(script_dir, "functions.R"))
 
 # Load the categories list from the RDS file
 categories <- readRDS("categories.rds")
