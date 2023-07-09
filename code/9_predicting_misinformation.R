@@ -73,7 +73,24 @@ pred1 = predict(model, merged_data, type = "response")
 
 merged_data$misinformation = pred1
 
-
-
 final_data = rbind(merged_data, validation)
 write.csv(final_data, "vax_tweets_6.csv")
+
+# Add misinformation to the monthly datasets
+library(dplyr)
+final_data <- final_data %>%
+  select(-starts_with("hashtag_"))
+final_data$date = as.Date(final_data$date)
+min_date <- min(final_data$date)
+max_date <- max(final_data$date)
+
+# Generate monthly final_datasets and write to CSV
+date_range <- seq(min_date, max_date, by = "month")
+for (i in 1:(length(date_range) - 1)) {
+  start_date <- date_range[i]
+  end_date <- date_range[i+1] - 1
+  subset_name <- paste0("data_", format(start_date, "%b"), "_", format(start_date, "%Y"))
+  subset_final_data <- final_data[final_data$date >= start_date & final_data$date <= end_date, ]
+  assign(subset_name, subset_final_data)
+  write.csv(subset_final_data, file = paste0(subset_name, ".csv"), row.names = FALSE)
+}

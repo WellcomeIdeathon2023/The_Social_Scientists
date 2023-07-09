@@ -55,9 +55,10 @@ ui <- fluidPage(
       ")
     )
   ),
-  titlePanel("Monthly Data Analysis"),
+  titlePanel("Vaccine Misinformation Detector"),
   sidebarLayout(
     sidebarPanel(
+      actionButton("stopBtn", "Stop App"),
       selectInput(
         inputId = "selected_month",
         label = "Select a month:",
@@ -66,6 +67,8 @@ ui <- fluidPage(
       ),
       tags$p("Misinformation Alert", style = "font-weight: bold;"),
       verbatimTextOutput("warning"),
+      sliderInput("misinfoSlider", "Misinformation Proportion:",
+                  min = 0, max = 1, step = 0.01, value = 0),
       tags$p("Choose Category", style = "font-weight: bold;"),
       checkboxInput(
         inputId = "organisations_checkbox",
@@ -151,8 +154,7 @@ ui <- fluidPage(
         inputId = "media_checkbox",
         label = "Media",
         value = FALSE
-      ),
-      actionButton("stopBtn", "Stop App")
+      )
     ),
     mainPanel(
       tabsetPanel(
@@ -164,43 +166,56 @@ ui <- fluidPage(
                    tags$p("To use the app, follow these steps:"),
                    tags$ol(
                      tags$li("Step 1: Select the desired month using the dropdown menu."),
-                     tags$li("Step 2: Filter by specified categories using the checkbox."),
+                     tags$li("Step 2: Subset the data using the misinformation predicted probability"),
+                     tags$li("Step 3: Filter by specified categories using the checkbox."),
                    ),
                    tags$p("The app will output a warning if misinformation is significantly higher than the previous month"),
                    tags$p("We also offer visualisation related to hashtags, including co-occurrences"),
+                 ),
+                 tags$div(
+                   tags$h3("Put in information about pipeline and algorithms here:"),
                  )
         ),
         tabPanel(
           "Misinformation",
-          tags$h3("Average probability of misinformation for the selected month:"),
+          tags$h3("Average probability of misinformation for the selected month"),
           plotOutput("misinformation_month"),
-          tags$h3("Average probability of misinformation:"),
+          tags$h3("Average probability of misinformation"),
           plotOutput("misinformation"),
-          tags$h3("Density plot of misinformation probabiltiies per month:"),
+          tags$h3("Density plot of misinformation probabiltiies per month"),
           plotOutput("density_plot"),
-          tags$h3("Distribution of probability of misinformation per month:"),
+          tags$h3("Distribution of probability of misinformation per month"),
           plotOutput("boxplots")
         ),
         tabPanel(
           "Categories",
-          tags$h3("Most common categorised entities during the selected month:"),
+          tags$h3("Most common categorised entities during the selected month"),
           plotOutput("barplot_categories")
         ),
         tabPanel(
           "Sentiment",
-          tags$h3("All time sentiment changes:"),
+          tags$h3("All time sentiment changes"),
           plotOutput("alltime_trends"),
-          tags$h3("Sentiment change during the selected month:"),
+          tags$h3("Sentiment change during the selected month"),
           plotOutput("sentiment_plot")
         ),
         tabPanel(
           "Hashtags",
+          tags$h3("Hashtag counts for the given settings"),
           plotOutput("hashtags_by_category"),
-          tags$h3("Co-occurrence of the most common hashtags during the selected month:"),
+          plotOutput("hashtags_by_category_all"),
+          tags$h3("Co-occurrence of the most common hashtags during the selected month"),
           imageOutput("co_occurrence_plot"),
-          tags$h3("Sentiment by hashtag:"),
+          tags$h3("Sentiment by hashtag"),
           textInput(inputId = "input_hashtag", label = "Enter a hashtag:", value = ""),
           plotOutput("hashtag_plot"),
+        ),
+        tabPanel(
+          "Favourites",
+          tags$h3("Average number of favourites for the given settings and selected month"),
+          plotOutput("favourites_month"),
+          tags$h3("Average number of favourites for the given settings"),
+          plotOutput("favourites"),
         ),
       )
     )
@@ -535,6 +550,203 @@ server <- function(input, output, session) {
     })
     
     
+    output$favourites_month <- renderPlot({
+      selected_date <- parse_date_time(input$selected_month, "b-%Y")
+      
+      # Filter data based on selected month
+      selected_data <- global_trends[format(global_trends$date, "%b_%Y") == format(selected_date, "%b_%Y"), ]
+      
+      selected_data = selected_data[selected_data$misinformation >= input$misinfoSlider,]
+      
+      # Check if "Organisations" checkbox is checked
+      if (input$organisations_checkbox) {
+        selected_data <- selected_data[selected_data$Organizations > 0, ]
+      }
+      
+      # Check if "Locations" checkbox is checked
+      if (input$locations_checkbox) {
+        selected_data <- selected_data[selected_data$Locations > 0, ]
+      }
+      
+      # Check if "Symptoms" checkbox is checked
+      if (input$symptoms_checkbox) {
+        selected_data <- selected_data[selected_data$Symptoms > 0, ]
+      }
+      
+      # Check if "COVID" checkbox is checked
+      if (input$covid_checkbox) {
+        selected_data <- selected_data[selected_data$COVID > 0, ]
+      }
+      
+      # Check if "Vaccination" checkbox is checked
+      if (input$vaccination_checkbox) {
+        selected_data <- selected_data[selected_data$Vaccination > 0, ]
+      }
+      
+      # Check if "Politics" checkbox is checked
+      if (input$politics_checkbox) {
+        selected_data <- selected_data[selected_data$Politics > 0, ]
+      }
+      
+      # Check if "Conspiracy" checkbox is checked
+      if (input$conspiracy_checkbox) {
+        selected_data <- selected_data[selected_data$Conspiracy > 0, ]
+      }
+      
+      # Check if "Slurs" checkbox is checked
+      if (input$slurs_checkbox) {
+        selected_data <- selected_data[selected_data$Slurs > 0, ]
+      }
+      
+      # Check if "Masks" checkbox is checked
+      if (input$masks_checkbox) {
+        selected_data <- selected_data[selected_data$Masks > 0, ]
+      }
+      
+      # Check if "Origin" checkbox is checked
+      if (input$origin_checkbox) {
+        selected_data <- selected_data[selected_data$origin > 0, ]
+      }
+      
+      # Check if "Vaccine Conspiracy" checkbox is checked
+      if (input$vaccine_conspiracy_checkbox) {
+        selected_data <- selected_data[selected_data$vaccine_conspiracy > 0, ]
+      }
+      
+      # Check if "Government" checkbox is checked
+      if (input$government_checkbox) {
+        selected_data <- selected_data[selected_data$government > 0, ]
+      }
+      
+      # Check if "Pharma" checkbox is checked
+      if (input$pharma_checkbox) {
+        selected_data <- selected_data[selected_data$pharma > 0, ]
+      }
+      
+      # Check if "Five_G" checkbox is checked
+      if (input$five_g_checkbox) {
+        selected_data <- selected_data[selected_data$Five_G > 0, ]
+      }
+      
+      # Check if "Gates" checkbox is checked
+      if (input$gates_checkbox) {
+        selected_data <- selected_data[selected_data$gates > 0, ]
+      }
+      
+      # Check if "NWO" checkbox is checked
+      if (input$nwo_checkbox) {
+        selected_data <- selected_data[selected_data$nwo > 0, ]
+      }
+      
+      # Check if "Media" checkbox is checked
+      if (input$media_checkbox) {
+        selected_data <- selected_data[selected_data$media > 0, ]
+      }
+      
+      
+      fav_graph <- favourites_month(selected_data)
+      fav_graph
+    })
+    
+    output$favourites <- renderPlot({
+      
+      # Filter data based on selected month
+      selected_data <- global_trends
+      
+      selected_data = selected_data[selected_data$misinformation >= input$misinfoSlider,]
+      
+      # Check if "Organisations" checkbox is checked
+      if (input$organisations_checkbox) {
+        selected_data <- selected_data[selected_data$Organizations > 0, ]
+      }
+      
+      # Check if "Locations" checkbox is checked
+      if (input$locations_checkbox) {
+        selected_data <- selected_data[selected_data$Locations > 0, ]
+      }
+      
+      # Check if "Symptoms" checkbox is checked
+      if (input$symptoms_checkbox) {
+        selected_data <- selected_data[selected_data$Symptoms > 0, ]
+      }
+      
+      # Check if "COVID" checkbox is checked
+      if (input$covid_checkbox) {
+        selected_data <- selected_data[selected_data$COVID > 0, ]
+      }
+      
+      # Check if "Vaccination" checkbox is checked
+      if (input$vaccination_checkbox) {
+        selected_data <- selected_data[selected_data$Vaccination > 0, ]
+      }
+      
+      # Check if "Politics" checkbox is checked
+      if (input$politics_checkbox) {
+        selected_data <- selected_data[selected_data$Politics > 0, ]
+      }
+      
+      # Check if "Conspiracy" checkbox is checked
+      if (input$conspiracy_checkbox) {
+        selected_data <- selected_data[selected_data$Conspiracy > 0, ]
+      }
+      
+      # Check if "Slurs" checkbox is checked
+      if (input$slurs_checkbox) {
+        selected_data <- selected_data[selected_data$Slurs > 0, ]
+      }
+      
+      # Check if "Masks" checkbox is checked
+      if (input$masks_checkbox) {
+        selected_data <- selected_data[selected_data$Masks > 0, ]
+      }
+      
+      # Check if "Origin" checkbox is checked
+      if (input$origin_checkbox) {
+        selected_data <- selected_data[selected_data$origin > 0, ]
+      }
+      
+      # Check if "Vaccine Conspiracy" checkbox is checked
+      if (input$vaccine_conspiracy_checkbox) {
+        selected_data <- selected_data[selected_data$vaccine_conspiracy > 0, ]
+      }
+      
+      # Check if "Government" checkbox is checked
+      if (input$government_checkbox) {
+        selected_data <- selected_data[selected_data$government > 0, ]
+      }
+      
+      # Check if "Pharma" checkbox is checked
+      if (input$pharma_checkbox) {
+        selected_data <- selected_data[selected_data$pharma > 0, ]
+      }
+      
+      # Check if "Five_G" checkbox is checked
+      if (input$five_g_checkbox) {
+        selected_data <- selected_data[selected_data$Five_G > 0, ]
+      }
+      
+      # Check if "Gates" checkbox is checked
+      if (input$gates_checkbox) {
+        selected_data <- selected_data[selected_data$gates > 0, ]
+      }
+      
+      # Check if "NWO" checkbox is checked
+      if (input$nwo_checkbox) {
+        selected_data <- selected_data[selected_data$nwo > 0, ]
+      }
+      
+      # Check if "Media" checkbox is checked
+      if (input$media_checkbox) {
+        selected_data <- selected_data[selected_data$media > 0, ]
+      }
+      
+      
+      fav_graph <- favourites(selected_data)
+      fav_graph
+    })
+    
+    
+    
     output$sentiment_plot <- renderPlot({
       # Load the necessary data (replace with your own data loading code)
       selected_date <- parse_date_time(input$selected_month, "b-y")
@@ -581,6 +793,7 @@ server <- function(input, output, session) {
       file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
       data <- get(file_name)
       
+      data = data[data$misinformation >= input$misinfoSlider,]
       
       # Check if "Organisations" checkbox is checked
       if (input$organisations_checkbox) {
@@ -697,7 +910,133 @@ server <- function(input, output, session) {
       # Create the bar plot using ggplot2
       ggplot(plot_data, aes(x = reorder(Hashtags, -Counts), y = Counts)) +
         geom_bar(stat = "identity", fill = "steelblue") +
-        labs(x = "Hashtags", y = "Counts", title = "Counts of Hashtags") +
+        labs(x = "Hashtags", y = "Counts", title = paste0("Hashtag counts - ", input$selected_month)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    })
+    
+    output$hashtags_by_category_all <- renderPlot({
+      data <- global_trends
+      data <- data %>%
+        select(-starts_with("hashtag_"))
+      
+      data = data[data$misinformation >= input$misinfoSlider,]
+      
+      # Check if "Organisations" checkbox is checked
+      if (input$organisations_checkbox) {
+        data <- data[data$Organizations > 0, ]
+      }
+      
+      # Check if "Locations" checkbox is checked
+      if (input$locations_checkbox) {
+        data <- data[data$Locations > 0, ]
+      }
+      
+      # Check if "Symptoms" checkbox is checked
+      if (input$symptoms_checkbox) {
+        data <- data[data$Symptoms > 0, ]
+      }
+      
+      # Check if "COVID" checkbox is checked
+      if (input$covid_checkbox) {
+        data <- data[data$COVID > 0, ]
+      }
+      
+      # Check if "Vaccination" checkbox is checked
+      if (input$vaccination_checkbox) {
+        data <- data[data$Vaccination > 0, ]
+      }
+      
+      # Check if "Politics" checkbox is checked
+      if (input$politics_checkbox) {
+        data <- data[data$Politics > 0, ]
+      }
+      
+      # Check if "Conspiracy" checkbox is checked
+      if (input$conspiracy_checkbox) {
+        data <- data[data$Conspiracy > 0, ]
+      }
+      
+      # Check if "Slurs" checkbox is checked
+      if (input$slurs_checkbox) {
+        data <- data[data$Slurs > 0, ]
+      }
+      
+      # Check if "Masks" checkbox is checked
+      if (input$masks_checkbox) {
+        data <- data[data$Masks > 0, ]
+      }
+      
+      # Check if "Origin" checkbox is checked
+      if (input$origin_checkbox) {
+        data <- data[data$origin > 0, ]
+      }
+      
+      # Check if "Vaccine Conspiracy" checkbox is checked
+      if (input$vaccine_conspiracy_checkbox) {
+        data <- data[data$vaccine_conspiracy > 0, ]
+      }
+      
+      # Check if "Government" checkbox is checked
+      if (input$government_checkbox) {
+        data <- data[data$government > 0, ]
+      }
+      
+      # Check if "Pharma" checkbox is checked
+      if (input$pharma_checkbox) {
+        data <- data[data$pharma > 0, ]
+      }
+      
+      # Check if "Five_G" checkbox is checked
+      if (input$five_g_checkbox) {
+        data <- data[data$Five_G > 0, ]
+      }
+      
+      # Check if "Gates" checkbox is checked
+      if (input$gates_checkbox) {
+        data <- data[data$gates > 0, ]
+      }
+      
+      # Check if "NWO" checkbox is checked
+      if (input$nwo_checkbox) {
+        data <- data[data$nwo > 0, ]
+      }
+      
+      # Check if "Media" checkbox is checked
+      if (input$media_checkbox) {
+        data <- data[data$media > 0, ]
+      }
+      
+      
+      all_hashtags <- unlist(str_extract_all(data$hashtags, "\\w+"))
+      
+      # Find the two most common hashtags
+      top_hashtags <- head(sort(table(all_hashtags), decreasing = TRUE), 10)
+      most_common_hashtags <- names(top_hashtags)
+      
+      # Create new variables for the most common hashtags
+      for (hashtag in most_common_hashtags) {
+        hashtag_column <- paste0("hashtag_", hashtag)  # Add prefix "hashtag_" to the column name
+        data[[hashtag_column]] <- ifelse(grepl(hashtag, data$hashtags), 1, 0)
+      }
+      
+      library(ggplot2)
+      
+      hashtag_columns <- data[, grepl("^hashtag_", colnames(data))]
+      hashtag_counts <- colSums(hashtag_columns)
+      
+      # Sort the hashtags by count in descending order
+      sorted_hashtags <- sort(hashtag_counts, decreasing = TRUE)
+      
+      # Remove the "hashtag_" prefix from the names
+      hashtag_names <- sub("^hashtag_", "", names(sorted_hashtags))
+      
+      # Create a data frame for plotting
+      plot_data <- data.frame(Hashtags = hashtag_names, Counts = sorted_hashtags)
+      
+      # Create the bar plot using ggplot2
+      ggplot(plot_data, aes(x = reorder(Hashtags, -Counts), y = Counts)) +
+        geom_bar(stat = "identity", fill = "steelblue") +
+        labs(x = "Hashtags", y = "Counts", title = "Hashtag Counts - All time") +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
     })
     
@@ -806,30 +1145,7 @@ server <- function(input, output, session) {
       misinfo_graph <- misinformation(selected_data)
       misinfo_graph
     })
-    
-    output$negative_hashtags_table <- renderTable({
-      # Load the necessary data (replace with your own data loading code)
-      selected_date <- parse_date_time(input$selected_month, "b-y")
-      file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
-      data <- get(file_name)
-      
-      # Get the most common hashtags associated with negative sentiment
-      timeframe_start <- "2020-01-01"
-      timeframe_end <- "2020-06-30"
-      get_negative_hashtags(data, timeframe_start, timeframe_end)
-    })
-    
-    output$correlated_negative_hashtags_table <- renderTable({
-      # Load the necessary data (replace with your own data loading code)
-      selected_date <- parse_date_time(input$selected_month, "b-y")
-      file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
-      data <- get(file_name)
-      
-      # Get hashtags with the highest negative correlation
-      timeframe_start <- "2020-01-01"
-      timeframe_end <- "2020-06-30"
-      get_correlated_negative_hashtags(data, timeframe_start, timeframe_end)
-    })
+
     
     output$alltime_trends <- renderPlot({
       # Load the necessary data (replace with your own data loading code)
@@ -909,8 +1225,13 @@ server <- function(input, output, session) {
       file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
       data <- get(file_name)
       
+      data <- data %>%
+        select(-starts_with("hashtag_"))
+      
+      data = data[data$misinformation >= input$misinfoSlider,]
+      
       # Create an empty dataframe
-      variable_sums <- colSums(data[, 17:34])
+      variable_sums <- colSums(data[, 18:35])
       
       category_counts <- data.frame(Category = names(variable_sums), Count = variable_sums)
       

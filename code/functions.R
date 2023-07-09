@@ -228,7 +228,7 @@ misinformation = function(final_data){
   final_data <- final_data %>%
     arrange(date)
   
-  # Step 3: Calculate the 1-day rolling average of 'misinformation' by date
+  # Step 3: Calculate the 10-day rolling average of 'misinformation' by date
   library(zoo)
   final_data <- final_data %>%
     group_by(date) %>%
@@ -266,6 +266,52 @@ misinformation_month <- function(final_data) {
     geom_line() +
     labs(x = "Date", y = "1-day Average of Misinformation",
          title = "1-day Average of Misinformation Over Time")
+  
+  return(graph)
+}
+
+favourites_month <- function(final_data) {
+  require(ggplot2)
+  # Step 2: Sort the data frame by date
+  library(dplyr)
+  final_data <- final_data %>%
+    arrange(date)
+  
+  # Step 3: Calculate the 1-day rolling average of 'misinformation' by date
+  library(zoo)
+  final_data <- final_data %>%
+    group_by(date) %>%
+    summarise(favourites_avg = mean(user_favourites)) %>%
+    mutate(favourites_avg_1 = rollmean(favourites_avg, k = 1, fill = NA, align = "right", by = "1 day"))
+  
+  # Step 4: Create a line plot of the 1-day average over time
+  graph <- ggplot(final_data, aes(x = date, y = favourites_avg_1)) +
+    geom_line() +
+    labs(x = "Date", y = "1-day Average of Favourites",
+         title = "1-day Average of Favourites Over Time")
+  
+  return(graph)
+}
+
+favourites <- function(final_data) {
+  require(ggplot2)
+  # Step 2: Sort the data frame by date
+  library(dplyr)
+  final_data <- final_data %>%
+    arrange(date)
+  
+  # Step 3: Calculate the 10-day rolling average of 'misinformation' by date
+  library(zoo)
+  final_data <- final_data %>%
+    group_by(date) %>%
+    summarise(favourites_avg = mean(user_favourites)) %>%
+    mutate(favourites_avg_10 = rollmean(favourites_avg, k = 10, fill = NA, align = "right", by = "1 day"))
+  
+  # Step 4: Create a line plot of the 10-day average over time
+  graph <- ggplot(final_data, aes(x = date, y = favourites_avg_10)) +
+    geom_line() +
+    labs(x = "Date", y = "10-day Average of Favourites",
+         title = "10-day Average of Favourites Over Time")
   
   return(graph)
 }
