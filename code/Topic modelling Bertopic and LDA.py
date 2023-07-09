@@ -1,17 +1,15 @@
 # Data Preprocessing
 
-
 import pandas as pd
-
 
 # read data from corpus
 data = pd.read_csv('vax_tweets_with_sentiment_entities_3.csv', error_bad_lines=False)
 documents= data[['text']] 
 
-
 import re
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+
 
 def clean_tweet(tweet):
     
@@ -45,12 +43,10 @@ def clean_tweet(tweet):
     
     return cleaned_tweet.strip()
 
-
 documents['cleaned_text'] = documents['text'].apply(clean_tweet)
 
 
-
-# Lemmatision
+# Lemmatisation
 import stanza
 stanza.download('en') 
 nlp = stanza.Pipeline('en')  
@@ -77,7 +73,6 @@ documents.to_csv('vax_tweets_lemmatised_text_4.csv')
 
 # Topic Modelling: BERTopic
 
-
 data = pd.read_csv('data.csv', error_bad_lines=False)
 # remove duplicates
 documents = data[['preprocessed_text']]
@@ -86,14 +81,12 @@ documents = documents.drop_duplicates()
 tweets = documents['preprocessed_text'].tolist()
 
 
-
 # Remove numbers, but not words that contain numbers.
 cleaned_tweets = []
 for tweet in tweets:
     if isinstance(tweet, str):
         new_tweet = ' '.join([token for token in tweet.split() if not token.isdigit()])
         cleaned_tweets.append(new_tweet)
-
 
 
 from bertopic.representation import KeyBERTInspired
@@ -116,8 +109,7 @@ df.to_csv('BERTopic_WI_10.csv')
 
 topic_model.visualize_topics()
 
-# Results are not good: Topics heavily overlapped; Not meaningful topics
-
+# Results are not ideal: Topics heavily overlapped; Not meaningful topics
 
 
 
