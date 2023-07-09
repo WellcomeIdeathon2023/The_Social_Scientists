@@ -6,8 +6,12 @@ script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(file.path(script_dir, "../data"))
 
 data = read.csv("classified.csv")
+data2 = read.csv("classified_1001_1500.csv")
+data2 = data2[,2:3]
+data2$misinformation <- ifelse(data2$misinformation == 2, "True", "False")
 tweets = read.csv("vax_tweets_5.csv")
 
+data = as.data.frame(rbind(data, data2))
 
 # Check for missing numbers in the "X" column
 missing_numbers <- setdiff(1:100000, unique(tweets$X))

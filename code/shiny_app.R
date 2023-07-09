@@ -190,7 +190,9 @@ ui <- fluidPage(
         tabPanel(
           "Categories",
           tags$h3("Most common categorised entities during the selected month"),
-          plotOutput("barplot_categories")
+          plotOutput("barplot_categories"),
+          htmlOutput("category_increase_text"),
+          htmlOutput("hashtags_intervene")
         ),
         tabPanel(
           "Sentiment",
@@ -280,6 +282,7 @@ server <- function(input, output, session) {
           "Misinformation unchanged"
         }
       })
+      
       
       # Create a density plot comparing the current and previous month
       output$density_plot <- renderPlot({
@@ -441,17 +444,192 @@ server <- function(input, output, session) {
     })
     
     
+    processEntitiesData <- function(selected_month) {
+      selected_date <- parse_date_time(selected_month, "b-y")
+      file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+      data <- get(file_name)
+      
+      data <- data %>%
+        select(-starts_with("hashtag_"))
+      
+      data <- data[data$misinformation >= input$misinfoSlider,]
+      
+      # Calculate category counts and observations for selected month
+      variable_sums <- colSums(data[, 18:35])
+      observations <- nrow(data)
+      
+      # Create data frame for selected month
+      category_counts <- data.frame(Category = names(variable_sums), Count = variable_sums, Observations = observations)
+      
+      # Calculate proportions for selected month
+      category_counts$Proportion <- category_counts$Count / category_counts$Observations
+      
+      # Calculate category counts and observations for previous month
+      previous_month <- selected_date %m-% months(1)
+      previous_file_name <- paste0("data_", format(previous_month, format = "%b_%Y"))
+      
+      previous_data <- get(previous_file_name)
+      previous_data <- previous_data %>%
+        select(-starts_with("hashtag_"))
+      previous_data <- previous_data[previous_data$misinformation >= input$misinfoSlider,]
+        
+      previous_variable_sums <- colSums(previous_data[, 18:35])
+      previous_observations <- nrow(previous_data)
+        
+      # Create data frame for previous month
+      previous_category_counts <- data.frame(Category = names(previous_variable_sums), Count = previous_variable_sums, Observations = previous_observations)
+        
+      # Calculate proportions for previous month
+      previous_category_counts$Proportion <- previous_category_counts$Count / previous_category_counts$Observations
+        
+      # Calculate difference in proportions
+      category_counts$Difference <- category_counts$Proportion - previous_category_counts$Proportion
+        
+      # Determine color based on difference in proportions
+      category_counts$Color <- ifelse(category_counts$Difference > 0, "red", "steelblue")
+        
+      return(category_counts)
+    }
     
-    # Generate the plots
+    
+    
     output$barplot_categories <- renderPlot({
       category_counts <- processEntitiesData(input$selected_month)
       
-      ggplot(category_counts, aes(x = reorder(Category, -Count), y = Count)) +
-        geom_bar(stat = "identity", fill = "steelblue") +
+
+      ggplot(category_counts, aes(x = reorder(Category, -Count), y = Count, fill = Color)) +
+        geom_bar(stat = "identity") +
         labs(x = "Category", y = "Count") +
+        scale_fill_manual(values = c("steelblue" = "steelblue", "red" = "red"),
+                          labels = c("Increased", "Decreased")) +
         theme_minimal() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
     })
+    
+    output$category_increase_text <- renderText({
+      category_counts <- processEntitiesData(input$selected_month)
+      
+      increased_categories <- category_counts$Category[category_counts$Difference > 0]
+      if (length(increased_categories) > 0) {
+        text <- paste0("<strong>The categories which have increased this month are:</strong><br>",
+                       paste(increased_categories, collapse = ", "))
+      } else {
+        text <- "<em>No categories have increased this month.</em>"
+      }
+      
+      HTML(text)
+    })
+    
+    output$hashtags_intervene <- renderText({
+      selected_date <- parse_date_time(input$selected_month, "b-y")
+      file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+      data <- get(file_name)
+      
+      data = data[data$misinformation >= input$misinfoSlider,]
+      
+      # Check if "Organisations" checkbox is checked
+      if (input$organisations_checkbox) {
+        data <- data[data$Organizations > 0, ]
+      }
+      
+      # Check if "Locations" checkbox is checked
+      if (input$locations_checkbox) {
+        data <- data[data$Locations > 0, ]
+      }
+      
+      # Check if "Symptoms" checkbox is checked
+      if (input$symptoms_checkbox) {
+        data <- data[data$Symptoms > 0, ]
+      }
+      
+      # Check if "COVID" checkbox is checked
+      if (input$covid_checkbox) {
+        data <- data[data$COVID > 0, ]
+      }
+      
+      # Check if "Vaccination" checkbox is checked
+      if (input$vaccination_checkbox) {
+        data <- data[data$Vaccination > 0, ]
+      }
+      
+      # Check if "Politics" checkbox is checked
+      if (input$politics_checkbox) {
+        data <- data[data$Politics > 0, ]
+      }
+      
+      # Check if "Conspiracy" checkbox is checked
+      if (input$conspiracy_checkbox) {
+        data <- data[data$Conspiracy > 0, ]
+      }
+      
+      # Check if "Slurs" checkbox is checked
+      if (input$slurs_checkbox) {
+        data <- data[data$Slurs > 0, ]
+      }
+      
+      # Check if "Masks" checkbox is checked
+      if (input$masks_checkbox) {
+        data <- data[data$Masks > 0, ]
+      }
+      
+      # Check if "Origin" checkbox is checked
+      if (input$origin_checkbox) {
+        data <- data[data$origin > 0, ]
+      }
+      
+      # Check if "Vaccine Conspiracy" checkbox is checked
+      if (input$vaccine_conspiracy_checkbox) {
+        data <- data[data$vaccine_conspiracy > 0, ]
+      }
+      
+      # Check if "Government" checkbox is checked
+      if (input$government_checkbox) {
+        data <- data[data$government > 0, ]
+      }
+      
+      # Check if "Pharma" checkbox is checked
+      if (input$pharma_checkbox) {
+        data <- data[data$pharma > 0, ]
+      }
+      
+      # Check if "Five_G" checkbox is checked
+      if (input$five_g_checkbox) {
+        data <- data[data$Five_G > 0, ]
+      }
+      
+      # Check if "Gates" checkbox is checked
+      if (input$gates_checkbox) {
+        data <- data[data$gates > 0, ]
+      }
+      
+      # Check if "NWO" checkbox is checked
+      if (input$nwo_checkbox) {
+        data <- data[data$nwo > 0, ]
+      }
+      
+      # Check if "Media" checkbox is checked
+      if (input$media_checkbox) {
+        data <- data[data$media > 0, ]
+      }
+      
+      
+      all_hashtags <- unlist(str_extract_all(data$hashtags, "\\w+"))
+      
+      # Find the 10 most common hashtags
+      top_hashtags <- head(sort(table(all_hashtags), decreasing = TRUE), 10)
+      most_common_hashtags <- names(top_hashtags)
+      
+      
+
+      text <- paste0("<strong>The hashtags on which interventions would be effective for the chosen categories and misinformation are::</strong><br>",
+                     paste(most_common_hashtags, collapse = ", "))
+      
+      
+      HTML(text)
+      
+    })
+    
+    
     
     output$misinformation_month <- renderPlot({
       selected_date <- parse_date_time(input$selected_month, "b-%Y")
@@ -787,6 +965,7 @@ server <- function(input, output, session) {
         ) +
         theme_minimal()
     })
+    
     
     output$hashtags_by_category <- renderPlot({
       selected_date <- parse_date_time(input$selected_month, "b-y")
@@ -1219,24 +1398,7 @@ server <- function(input, output, session) {
       }
     })
     
-    # Helper function to process the data and generate the category_counts
-    processEntitiesData <- function(selected_month) {
-      selected_date <- parse_date_time(selected_month, "b-y")
-      file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
-      data <- get(file_name)
-      
-      data <- data %>%
-        select(-starts_with("hashtag_"))
-      
-      data = data[data$misinformation >= input$misinfoSlider,]
-      
-      # Create an empty dataframe
-      variable_sums <- colSums(data[, 18:35])
-      
-      category_counts <- data.frame(Category = names(variable_sums), Count = variable_sums)
-      
-      return(category_counts)
-    }
+    
     
   })
 }
