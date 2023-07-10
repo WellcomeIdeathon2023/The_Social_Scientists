@@ -21,7 +21,7 @@ more_words = {
     "covid", "when", "from", "for", "the", "and",
     "covid19", "its", "are", "with", "there",
     "vaccine", "has", "been", "how", "what",
-    "vaccines", 
+    "vaccines", "covid-19", "'", "",
     "vaccination",
     "covidvaccine",
     "coronavirus",
@@ -41,7 +41,7 @@ def convert_to_datetime(s):
 # Function to remove stop words
 def remove_stop_words(text):
     word_tokens = word_tokenize(text)
-    filtered_sentence = [w for w in word_tokens if not w in stop_words]
+    filtered_sentence = [w for w in word_tokens if not w.lower() in stop_words]
     return ' '.join(filtered_sentence)
 
 # Clean dataframe
@@ -79,6 +79,9 @@ def clean_data(df):
     # Remove stop words in text and description
     df['text'] = df['text'].apply(remove_stop_words)
     df['user_description'] = df['user_description'].apply(remove_stop_words)
+    # Remove links
+    df['text'] = df['text'].str.replace('http[s]? *: *//(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', regex=True)
+    df['user_description'] = df['user_description'].str.replace('http[s]? *: *//(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', regex=True)
 
     return df
 
