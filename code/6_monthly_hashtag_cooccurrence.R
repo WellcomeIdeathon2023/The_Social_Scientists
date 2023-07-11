@@ -1,7 +1,14 @@
+#This code produces the hashtag co-occurrence images in the results file
+#Have to save them manually
+
+
 library(tidyverse)
 library(igraph)
 library(Matrix)
 set.seed(42)
+
+
+
 # Get the directory of the R script
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
