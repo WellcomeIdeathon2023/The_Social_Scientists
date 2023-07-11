@@ -202,6 +202,15 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                    tags$p("Our app uses Machine Learning to predict the probability that any given tweet is misinformation"),
                    tags$p("We aggregregate various visualisations related to our results to offer advice as to where intereventions will be effective"),
                    tags$p("We predict the anti-vax sentiment for the next month based on the current misinformation levels")
+                 ),
+                 tags$div(
+                   tags$h3("What is misinformation probability?"),
+                   tags$p("Each tweet has been identified by out model as having a certain probability (0 to 1) of being misinformation. By adjusting the slider, you can subset the data to only include tweets with a misinformation probability ABOVE the chosen amount"),
+                 ),
+                 tags$div(
+                   tags$h3("The Alert Sytem"),
+                   tags$p("On the left, you will see a misinformation alert for the chosen month"),
+                   tags$p("If misinformation is HIGHER than the previous month (to a statistically significant level), then you will be alerted to this"),
                  )
         ),
         tabPanel(
@@ -217,6 +226,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
         ),
         tabPanel(
           "Categories",
+          tags$p("We conducted named entity recognition to discover the named entities in each tweet. We categorised them according to a dictionary, and display the counts for the current settings. If the proportion of a category is higher than the previous month, then it displays in RED."),
           tags$h3("Most common categorised entities during the selected month"),
           plotOutput("barplot_categories"),
           htmlOutput("category_increase_text"),
@@ -224,6 +234,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
         ),
         tabPanel(
           "Sentiment",
+          tags$p("We conducted sentiment analysis for each tweet. For example: If a tweet is 'I am VERY happy about the Spurs score!', then it would be a positive sentiment (even if slightly unrealistic!)"),
           tags$h3("All time sentiment changes"),
           tags$p("Blue = positive, Red = negative"),
           plotOutput("alltime_trends"),
@@ -233,6 +244,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
         ),
         tabPanel(
           "Topics",
+          tags$p("We conducted topic modelling (which we interpreted), and assigned to each tweet the most dominant topic. We display these topic counts over time for the given settings."),
           plotOutput("topics_all")
         ),
         # tabPanel(
@@ -257,6 +269,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
           tags$h3("Co-occurrence of the most common hashtags during the selected month"),
           imageOutput("co_occurrence_plot"),
           tags$h3("Sentiment by hashtag"),
+          tags$p("For a chosen hashtag, we will show you the sentiments of tweets with that hashtag over time."),
           textInput(inputId = "input_hashtag", label = "Enter a hashtag:", value = ""),
           plotOutput("hashtag_plot"),
           tags$p("Blue = positive, Red = negative, Black = all"),
@@ -271,6 +284,8 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
         tabPanel(
           "Vaccine Sentiment",
           tags$h3("Surveyed vaccine sentiment and misinformation level"),
+          tags$p("Here we show the surveyed anti-vaccination sentiment against the current misinformation level"),
+          tags$p("A linear regression model predicts the change in the anti-vaccination sentiment for the upcoming month"),
           plotOutput("survey"),
           htmlOutput("predict_antivax")
         )
@@ -481,9 +496,11 @@ server <- function(input, output, session) {
           predicted_change <- predict(model, newdata = selected_data)
           predicted_change_percentage <- predicted_change * 100
           
-          # Create the output text with HTML formatting
-          output_text <- paste("Predicted antivax_change for", selected_month, ": ",
-                               round(predicted_change_percentage, 2), "%", sep = "")
+          output_text <- paste("Predicted change in anti-vaccination sentiment for ", selected_month, ": ", 
+                               ifelse(predicted_change_percentage >= 0, "+", "-"), 
+                               "<span style='color: red;'>", abs(round(predicted_change_percentage, 2)), "%</span>", sep = "")
+          
+          
           
           # Return the output text with HTML tags
           HTML(output_text)
