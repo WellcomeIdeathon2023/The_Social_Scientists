@@ -200,7 +200,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                  tags$div(
                    tags$h3("How it works:"),
                    tags$p("Our app uses Machine Learning to predict the probability that any given tweet is misinformation"),
-                   tags$p("We aggregregate various visualisations related to our results to offer advice as to where intereventions will be effective")
+                   tags$p("We aggregregate various visualisations related to our results to offer advice as to where intereventions will be effective"),
                    tags$p("We predict the anti-vax sentiment for the next month based on the current misinformation levels")
                  )
         ),
