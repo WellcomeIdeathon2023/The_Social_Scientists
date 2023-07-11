@@ -12,7 +12,9 @@ data3 = read.csv("classified_750_1001.csv")
 data3 = data3[,-1]
 data2 = read.csv("classified_501_750.csv")
 
-topics = read.csv("vax_tweets_topic_distribution_5.csv")
+topics = read.csv("vax_tweets_topic_distribution_6.csv")
+class(topics$date)
+topics$date = as.Date(topics$date,format = "%d/%m/%y")
 
 #data  goes from 1 - 500
 #seems that data2 goes from 500 - 749 - so 500 repeated in data and data4
@@ -32,6 +34,8 @@ colnames(data4) = c("X", "misinformation")
 data2$misinformation <- ifelse(data2$misinformation == 1, "True", "False")
 data4$misinformation <- ifelse(data4$misinformation == 2, "True", "False")
 tweets = read.csv("vax_tweets_5.csv")
+
+
 
 
 topics_subset = topics[,c("X","dominant_topic")]
