@@ -198,7 +198,10 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                    tags$p("We also offer visualisation related to hashtags, including co-occurrences"),
                  ),
                  tags$div(
-                   tags$h3("Put in information about pipeline and algorithms here:"),
+                   tags$h3("How it works:"),
+                   tags$p("Our app uses Machine Learning to predict the probability that any given tweet is misinformation"),
+                   tags$p("We aggregregate various visualisations related to our results to offer advice as to where intereventions will be effective")
+                   tags$p("We predict the anti-vax sentiment for the next month based on the current misinformation levels")
                  )
         ),
         tabPanel(
@@ -426,7 +429,7 @@ server <- function(input, output, session) {
           data <- data[data$media > 0, ]
         }
         # Create a new variable for the month and year
-        data$month_year <- format(data$date, "%b-%Y")
+        data$month_year <- format(data$date, "%Y-%m")
         
         # Count the occurrences of each factor level in dominant_topic for each month
         topic_counts <- data %>%
