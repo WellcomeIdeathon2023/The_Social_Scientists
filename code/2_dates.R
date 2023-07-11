@@ -10,7 +10,7 @@ library(lubridate)
 
 data$date = gsub("\\ .*", "", data$date)
 
-data$date = ymd(data$date)
+data$date = as.Date(data$date)
 
 write.csv(data, file = "vax_tweets_cleaned_with_sentiment_2.csv", row.names = F)
 

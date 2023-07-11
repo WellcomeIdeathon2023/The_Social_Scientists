@@ -1,14 +1,14 @@
 library(tidyverse)
 library(igraph)
 library(Matrix)
-
+set.seed(42)
 # Get the directory of the R script
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
 # Set the working directory
 setwd(file.path(script_dir, "../data"))
 
-source("functions.R")
+source(file.path(script_dir, "functions.R"))
 
 # List all CSV files in the working directory
 csv_files <- list.files(pattern = "*.csv")
@@ -27,8 +27,8 @@ for (file in csv_files) {
 library(lubridate)
 
 # Define the start and end dates
-start_date <- ymd("2020-01-01")
-end_date <- ymd("2022-11-01")
+start_date <- ymd("2020-08-09")
+end_date <- ymd("2022-09-14")
 
 # List to store the dataset objects
 datasets <- list()
@@ -43,11 +43,14 @@ while (current_date <= end_date) {
 }
 
 
+#For some reason cannot save graphs using function
+#So have to save each one manually using export button!
 # Iterate through the datasets
 for (dataset_name in names(datasets)) {
   dataset_object <- datasets[[dataset_name]]
   
   # Generate the graph using hashtag_cooccurrence()
   hashtag_cooccurrence(dataset_object)
+  print(dataset_name)
   
 }

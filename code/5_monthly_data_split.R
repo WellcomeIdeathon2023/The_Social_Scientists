@@ -1,5 +1,5 @@
 # Load the dataset
-
+set.seed(42)
 # Get the directory of the R script
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 

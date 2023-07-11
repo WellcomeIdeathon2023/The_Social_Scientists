@@ -315,3 +315,33 @@ favourites <- function(final_data) {
   
   return(graph)
 }
+
+ClusterAnalysis = function(data){
+  require(stringi)
+  require(dplyr)
+  require(tm)
+  data %>% dplyr::select(cleaned_text, polarity_text) %>% 
+    mutate(WordCount = stri_count_words(cleaned_text))%>% 
+    select(WordCount,polarity_text)
+  
+  negative_sentiments <- filter(data, polarity_text <0.1)
+  positive_sentiments <- filter(data, polarity_text >0.1)
+  
+  negative_dtm <- DocumentTermMatrix(Corpus(VectorSource(negative_sentiments[,c("cleaned_text")])))
+  negative_dtm <- removeSparseTerms(negative_dtm, 0.98)
+  negative_clusters <- as.data.frame(as.matrix(negative_dtm))
+  
+  positive_dtm <- DocumentTermMatrix(Corpus(VectorSource(positive_sentiments[,c("cleaned_text")])))
+  positive_dtm <- removeSparseTerms(positive_dtm, 0.98)
+  positive_clusters <- as.data.frame(as.matrix(positive_dtm))
+  
+  cluster_list = list(negative_clusters,positive_clusters)
+  
+  return(cluster_list)
+}
+
+clusters_plot <- function(data) {
+  require(EGAnet)
+  plot = EGA(data, cor = "spearman")
+  return(plot)
+}

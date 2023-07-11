@@ -3,12 +3,46 @@ import numpy as np
 from textblob import TextBlob
 import ast
 
+import nltk
+nltk.download('punkt')
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
 # Try to convert string to list
 def convert_string_to_list(s):
     try:
         return ast.literal_eval(s)
     except (ValueError, SyntaxError):
         return []
+
+# English stop words + other words to remove
+stop_words = set(stopwords.words('english'))
+more_words = {
+    "covid", "when", "from", "for", "the", "and",
+    "covid19", "its", "are", "with", "there",
+    "vaccine", "has", "been", "how", "what",
+    "vaccines", "covid-19", "'", "",
+    "vaccination",
+    "covidvaccine",
+    "coronavirus",
+    "amp",
+    "were",
+    "this",
+}
+stop_words = stop_words|more_words
+
+# Try to convert to date
+def convert_to_datetime(s):
+    try:
+        return pd.to_datetime(s, format='%d/%m/%Y %H:%M')
+    except ValueError:
+        return pd.NaT
+
+# Function to remove stop words
+def remove_stop_words(text):
+    word_tokens = word_tokenize(text)
+    filtered_sentence = [w for w in word_tokens if not w.lower() in stop_words]
+    return ' '.join(filtered_sentence)
 
 # Clean dataframe
 def clean_data(df):
@@ -35,12 +69,19 @@ def clean_data(df):
     df["user_verified"] = df["user_verified"].apply(lambda x: False if x=="FALSE" else x)
     df["user_verified"] = df["user_verified"].astype(bool)
     df['text'] = df['text'].astype(str)
-    df['date'] = pd.to_datetime(df['date'], format="mixed")
+    df['date'] = df['date'].apply(convert_to_datetime)
     df['hashtags'] = df['hashtags'].apply(convert_string_to_list)
     del(df["is_retweet"])
 
     # There's some missing dates (12) which we eliminate
     df = df.dropna(subset=['date'])
+    
+    # Remove stop words in text and description
+    df['text'] = df['text'].apply(remove_stop_words)
+    df['user_description'] = df['user_description'].apply(remove_stop_words)
+    # Remove links
+    df['text'] = df['text'].str.replace('http[s]? *: *//(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', regex=True)
+    df['user_description'] = df['user_description'].str.replace('http[s]? *: *//(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', regex=True)
 
     return df
 

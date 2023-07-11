@@ -1,17 +1,53 @@
 # Get the directory of the R script
 library(dplyr)
+set.seed(42)
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
 # Set the working directory
 setwd(file.path(script_dir, "../data"))
 
-data = read.csv("classified.csv")
-data2 = read.csv("classified_1001_1500.csv")
-data2 = data2[,2:3]
-data2$misinformation <- ifelse(data2$misinformation == 2, "True", "False")
+data1 = read.csv("classified.csv")
+data4 = read.csv("classified_1001_1500.csv")
+data3 = read.csv("classified_750_1001.csv")
+data3 = data3[,-1]
+data2 = read.csv("classified_501_750.csv")
+
+topics = read.csv("vax_tweets_topic_distribution_5.csv")
+
+#data  goes from 1 - 500
+#seems that data2 goes from 500 - 749 - so 500 repeated in data and data4
+#data 3 goes from 750 - 1000
+#data 4 goes from 1001 - 1500
+
+data4 = data4[,c(1,3)]
+data2 = data2[,c(1,3)]
+data2 = data2[-1,]
+
+data2 = data2[1:249,]
+
+colnames(data2) = c("X", "misinformation")
+colnames(data3) = c("X", "misinformation")
+colnames(data4) = c("X", "misinformation")
+
+data2$misinformation <- ifelse(data2$misinformation == 1, "True", "False")
+data4$misinformation <- ifelse(data4$misinformation == 2, "True", "False")
 tweets = read.csv("vax_tweets_5.csv")
 
-data = as.data.frame(rbind(data, data2))
+
+topics_subset = topics[,c("X","dominant_topic")]
+
+tweets = merge(topics_subset, tweets, by="X")
+tweets$dominant_topic = as.factor(tweets$dominant_topic)
+tweets$date = as.Date(tweets$date)
+
+library(lubridate)
+tweets <- tweets %>%
+  mutate(year = year(date),
+         month = month(date),
+         day = day(date),
+         day_of_week = wday(date, label = TRUE))
+
+data = as.data.frame(rbind(data1, data2, data3, data4))
 
 # Check for missing numbers in the "X" column
 missing_numbers <- setdiff(1:100000, unique(tweets$X))
@@ -33,17 +69,12 @@ train_indices <- sample(nrow(merged_data), 0.8 * nrow(merged_data))
 train_data <- merged_data[train_indices, ]
 test_data <- merged_data[-train_indices, ]
 
-# Load the randomForest package
-library(randomForest)
-
-# Get the column names that start with "hashtag_"
-hashtag_columns <- grep("^hashtag_", colnames(tweets), value = TRUE)
 
 # Create the formula for random forest, including the hashtag columns
-formula <- as.formula(paste("misinformation ~ polarity_text + subjectivity_text + subjectivity_description + polarity_description + Organizations + Locations + Symptoms + COVID + Vaccination + Politics +
-                        Conspiracy + Slurs + Masks + Miscellaneous + origin + 
-                            vaccine_conspiracy + government + pharma + Five_G + 
-                            gates + nwo + media +", paste(hashtag_columns, collapse = " + "), collapse = " + "))
+formula <- as.formula(paste("misinformation ~ polarity_text + subjectivity_text + 
+                        subjectivity_description + polarity_description + 
+                        Locations + Symptoms + COVID +
+                        Conspiracy +  Masks + origin + day + month + year"))
 
 
 formula
@@ -84,9 +115,11 @@ write.csv(final_data, "vax_tweets_6.csv")
 library(dplyr)
 final_data <- final_data %>%
   select(-starts_with("hashtag_"))
+class(final_data$date)
 final_data$date = as.Date(final_data$date)
 min_date <- min(final_data$date)
 max_date <- max(final_data$date)
+
 
 # Generate monthly final_datasets and write to CSV
 date_range <- seq(min_date, max_date, by = "month")

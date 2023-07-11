@@ -1,4 +1,5 @@
 # Get the directory of the R script
+set.seed(42)
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 
 # Set the working directory

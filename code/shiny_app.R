@@ -10,7 +10,12 @@ library(networkD3)
 library(htmlwidgets)
 library(visNetwork)
 library(here)
-
+library(stringi)
+library(tm)
+library(EGAnet)
+library(shinythemes)
+library(sna)
+library(RColorBrewer)
 
 # Get the directory of the R script
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
@@ -39,12 +44,32 @@ for (file in csv_files) {
 # Get global dataset to use for global trends tab
 global_trends <- read.csv("vax_tweets_6.csv")
 global_trends$date = as.Date(global_trends$date)
+global_trends = global_trends[,-1]
+
+global_trends$dominant_topic = as.factor(global_trends$dominant_topic)
+
+
+simulated = read.csv("simulated data.csv")
+
+simulated$date = as.Date(simulated$date, format = "%d/%m/%Y")
+simulated = simulated[-(36:39),]
+simulated = simulated[,-(4:6)]
+
+# Sort the dataframe by date in ascending order
+simulated <- simulated[order(simulated$date), ]
+
+# Calculate the change in antivax count
+simulated$antivax_change <- c(diff(simulated$antivaccine), NA)
+
+#Get data with sentiments for clustering
+sentiment_clusters <- read.csv("vax_tweets_with_sentiment_entities_3.csv")
+sentiment_clusters$date <- as.Date(sentiment_clusters$date)
 
 # Apply the function to the dataframe
 gt2 <- analyze_hashtag(global_trends, "hashtags", "'vaccine'")
 
 # Define UI
-ui <- fluidPage(
+ui <- fluidPage(theme = shinytheme("cerulean"),
   tags$head(
     tags$style(
       HTML("
@@ -62,8 +87,8 @@ ui <- fluidPage(
       selectInput(
         inputId = "selected_month",
         label = "Select a month:",
-        choices = format(seq(as.Date("2020-01-01"), as.Date("2022-11-01"), by = "month"), format = "%b-%Y"),
-        selected = format(as.Date("2022-11-01"), format = "%b-%Y")
+        choices = format(seq(as.Date("2020-08-09"), as.Date("2022-09-14"), by = "month"), format = "%b-%Y"),
+        selected = format(as.Date("2021-06-01"), format = "%b-%Y")
       ),
       tags$p("Misinformation Alert", style = "font-weight: bold;"),
       verbatimTextOutput("warning"),
@@ -197,10 +222,30 @@ ui <- fluidPage(
         tabPanel(
           "Sentiment",
           tags$h3("All time sentiment changes"),
+          tags$p("Blue = positive, Red = negative"),
           plotOutput("alltime_trends"),
           tags$h3("Sentiment change during the selected month"),
-          plotOutput("sentiment_plot")
+          tags$p("Blue = positive, Red = negative"),
+          plotOutput("sentiment_plot"),
         ),
+        tabPanel(
+          "Topics",
+          plotOutput("topics_all")
+        ),
+        # tabPanel(
+        #   "Word Clusters",
+        #   tags$h3("All time negative sentiment clusters"),
+        #   plotOutput("sentiment_neg_clusters"),
+        #   
+        #   tags$h3("Monthly negative sentiment clusters"),
+        #   plotOutput("sentiment_neg_clusters_monthly"),
+        #   
+        #   tags$h3("All time positive sentiment clusters"),
+        #   plotOutput("sentiment_pos_clusters"),
+        #   
+        #   tags$h3("Monthly positive sentiment clusters"),
+        #   plotOutput("sentiment_pos_clusters_monthly"),
+        # ),
         tabPanel(
           "Hashtags",
           tags$h3("Hashtag counts for the given settings"),
@@ -211,6 +256,7 @@ ui <- fluidPage(
           tags$h3("Sentiment by hashtag"),
           textInput(inputId = "input_hashtag", label = "Enter a hashtag:", value = ""),
           plotOutput("hashtag_plot"),
+          tags$p("Blue = positive, Red = negative, Black = all"),
         ),
         tabPanel(
           "Favourites",
@@ -219,6 +265,12 @@ ui <- fluidPage(
           tags$h3("Average number of favourites for the given settings"),
           plotOutput("favourites"),
         ),
+        tabPanel(
+          "Vaccine Sentiment",
+          tags$h3("Surveyed vaccine sentiment and misinformation level"),
+          plotOutput("survey"),
+          htmlOutput("predict_antivax")
+        )
       )
     )
   )
@@ -250,7 +302,7 @@ server <- function(input, output, session) {
     # Create reactive values for storing the selected month and mean misinformation
     current_month <- reactiveVal(0)
     previous_month <- reactiveVal(0)
-    selected_month <- reactiveVal(format(as.Date("2021-06-01"), format = "%b-%Y"))  # Initial selected month
+    selected_month <- reactiveVal(format(as.Date("2020-06-01"), format = "%b-%Y"))  # Initial selected month
     
     # Load the ggplot2 library
     library(ggplot2)
@@ -283,6 +335,163 @@ server <- function(input, output, session) {
         }
       })
       
+      output$topics_all = renderPlot({
+        
+        data = global_trends
+        
+        data <- data[data$misinformation >= input$misinfoSlider,]
+        
+        # Check if "Organisations" checkbox is checked
+        if (input$organisations_checkbox) {
+          data <- data[data$Organizations > 0, ]
+        }
+        
+        # Check if "Locations" checkbox is checked
+        if (input$locations_checkbox) {
+          data <- data[data$Locations > 0, ]
+        }
+        
+        # Check if "Symptoms" checkbox is checked
+        if (input$symptoms_checkbox) {
+          data <- data[data$Symptoms > 0, ]
+        }
+        
+        # Check if "COVID" checkbox is checked
+        if (input$covid_checkbox) {
+          data <- data[data$COVID > 0, ]
+        }
+        
+        # Check if "Vaccination" checkbox is checked
+        if (input$vaccination_checkbox) {
+          data <- data[data$Vaccination > 0, ]
+        }
+        
+        # Check if "Politics" checkbox is checked
+        if (input$politics_checkbox) {
+          data <- data[data$Politics > 0, ]
+        }
+        
+        # Check if "Conspiracy" checkbox is checked
+        if (input$conspiracy_checkbox) {
+          data <- data[data$Conspiracy > 0, ]
+        }
+        
+        # Check if "Slurs" checkbox is checked
+        if (input$slurs_checkbox) {
+          data <- data[data$Slurs > 0, ]
+        }
+        
+        # Check if "Masks" checkbox is checked
+        if (input$masks_checkbox) {
+          data <- data[data$Masks > 0, ]
+        }
+        
+        # Check if "Origin" checkbox is checked
+        if (input$origin_checkbox) {
+          data <- data[data$origin > 0, ]
+        }
+        
+        # Check if "Vaccine Conspiracy" checkbox is checked
+        if (input$vaccine_conspiracy_checkbox) {
+          data <- data[data$vaccine_conspiracy > 0, ]
+        }
+        
+        # Check if "Government" checkbox is checked
+        if (input$government_checkbox) {
+          data <- data[data$government > 0, ]
+        }
+        
+        # Check if "Pharma" checkbox is checked
+        if (input$pharma_checkbox) {
+          data <- data[data$pharma > 0, ]
+        }
+        
+        # Check if "Five_G" checkbox is checked
+        if (input$five_g_checkbox) {
+          data <- data[data$Five_G > 0, ]
+        }
+        
+        # Check if "Gates" checkbox is checked
+        if (input$gates_checkbox) {
+          data <- data[data$gates > 0, ]
+        }
+        
+        # Check if "NWO" checkbox is checked
+        if (input$nwo_checkbox) {
+          data <- data[data$nwo > 0, ]
+        }
+        
+        # Check if "Media" checkbox is checked
+        if (input$media_checkbox) {
+          data <- data[data$media > 0, ]
+        }
+        # Create a new variable for the month and year
+        data$month_year <- format(data$date, "%b-%Y")
+        
+        # Count the occurrences of each factor level in dominant_topic for each month
+        topic_counts <- data %>%
+          group_by(month_year, dominant_topic) %>%
+          count() %>%
+          ungroup()
+        
+        # Generate a color palette with 11 distinct colors
+        my_colors <- rainbow(length(unique(topic_counts$dominant_topic)))
+        
+        # Plotting
+        ggplot(topic_counts, aes(x = month_year, y = n, fill = dominant_topic)) +
+          geom_bar(stat = "identity") +
+          labs(x = "Month", y = "Count", title = "Monthly Count of Dominant Topics") +
+          scale_fill_manual(values = my_colors, labels = levels(topic_counts$dominant_topic)) +
+          theme_minimal() +
+          theme(legend.title = element_blank(),
+                axis.text.x = element_text(angle = 90, hjust = 1))
+        
+      })
+      
+      output$survey = renderPlot({
+        ggplot(simulated, aes(x = date)) +
+          geom_line(aes(y = antivaccine, color = "Antivaccine")) +
+          geom_line(aes(y = misinformation, color = "Misinformation")) +
+          scale_color_manual(values = c("blue", "red"), 
+                             labels = c("Against Vaccination", "Misinformation percentage")) +
+          labs(x = "Date", y = "Percentage (%)") +
+          ggtitle("Anti-vaccine and Misinformation Trends") +
+          theme_minimal() +
+          theme(legend.position = "top", 
+                legend.justification = "right")
+      })
+      
+      output$predict_antivax = renderText({
+        
+        
+        model = lm(antivax_change ~ misinformation ,data = simulated)
+        
+        selected_month <- input$selected_month
+        selected_date <- as.Date(paste0("01-", selected_month), format = "%d-%b-%Y")
+        
+        # Create a new dataframe with the selected month's data
+        selected_data <- subset(simulated, format(date, "%b-%Y") == format(selected_date, "%b-%Y"))
+        
+        # Check if data for the selected month exists
+        if (nrow(selected_data) > 0) {
+          # Format the predicted change as a percentage
+          predicted_change <- predict(model, newdata = selected_data)
+          predicted_change_percentage <- predicted_change * 100
+          
+          # Create the output text with HTML formatting
+          output_text <- paste("Predicted antivax_change for", selected_month, ": ",
+                               round(predicted_change_percentage, 2), "%", sep = "")
+          
+          # Return the output text with HTML tags
+          HTML(output_text)
+        } else {
+          # Output a message if data for the selected month is not available
+          output_text <- paste("Data not available for", selected_month)
+          
+          # Return the output text with HTML tags
+          HTML(output_text)
+        }
+      })
       
       # Create a density plot comparing the current and previous month
       output$density_plot <- renderPlot({
@@ -455,7 +664,7 @@ server <- function(input, output, session) {
       data <- data[data$misinformation >= input$misinfoSlider,]
       
       # Calculate category counts and observations for selected month
-      variable_sums <- colSums(data[, 18:35])
+      variable_sums <- colSums(data[, 19:36])
       observations <- nrow(data)
       
       # Create data frame for selected month
@@ -473,7 +682,7 @@ server <- function(input, output, session) {
         select(-starts_with("hashtag_"))
       previous_data <- previous_data[previous_data$misinformation >= input$misinfoSlider,]
         
-      previous_variable_sums <- colSums(previous_data[, 18:35])
+      previous_variable_sums <- colSums(previous_data[, 19:36])
       previous_observations <- nrow(previous_data)
         
       # Create data frame for previous month
@@ -931,6 +1140,95 @@ server <- function(input, output, session) {
       file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
       data <- get(file_name)
       
+      
+      data <- data[data$misinformation >= input$misinfoSlider,]
+      
+      # Check if "Organisations" checkbox is checked
+      if (input$organisations_checkbox) {
+        data <- data[data$Organizations > 0, ]
+      }
+      
+      # Check if "Locations" checkbox is checked
+      if (input$locations_checkbox) {
+        data <- data[data$Locations > 0, ]
+      }
+      
+      # Check if "Symptoms" checkbox is checked
+      if (input$symptoms_checkbox) {
+        data <- data[data$Symptoms > 0, ]
+      }
+      
+      # Check if "COVID" checkbox is checked
+      if (input$covid_checkbox) {
+        data <- data[data$COVID > 0, ]
+      }
+      
+      # Check if "Vaccination" checkbox is checked
+      if (input$vaccination_checkbox) {
+        data <- data[data$Vaccination > 0, ]
+      }
+      
+      # Check if "Politics" checkbox is checked
+      if (input$politics_checkbox) {
+        data <- data[data$Politics > 0, ]
+      }
+      
+      # Check if "Conspiracy" checkbox is checked
+      if (input$conspiracy_checkbox) {
+        data <- data[data$Conspiracy > 0, ]
+      }
+      
+      # Check if "Slurs" checkbox is checked
+      if (input$slurs_checkbox) {
+        data <- data[data$Slurs > 0, ]
+      }
+      
+      # Check if "Masks" checkbox is checked
+      if (input$masks_checkbox) {
+        data <- data[data$Masks > 0, ]
+      }
+      
+      # Check if "Origin" checkbox is checked
+      if (input$origin_checkbox) {
+        data <- data[data$origin > 0, ]
+      }
+      
+      # Check if "Vaccine Conspiracy" checkbox is checked
+      if (input$vaccine_conspiracy_checkbox) {
+        data <- data[data$vaccine_conspiracy > 0, ]
+      }
+      
+      # Check if "Government" checkbox is checked
+      if (input$government_checkbox) {
+        data <- data[data$government > 0, ]
+      }
+      
+      # Check if "Pharma" checkbox is checked
+      if (input$pharma_checkbox) {
+        data <- data[data$pharma > 0, ]
+      }
+      
+      # Check if "Five_G" checkbox is checked
+      if (input$five_g_checkbox) {
+        data <- data[data$Five_G > 0, ]
+      }
+      
+      # Check if "Gates" checkbox is checked
+      if (input$gates_checkbox) {
+        data <- data[data$gates > 0, ]
+      }
+      
+      # Check if "NWO" checkbox is checked
+      if (input$nwo_checkbox) {
+        data <- data[data$nwo > 0, ]
+      }
+      
+      # Check if "Media" checkbox is checked
+      if (input$media_checkbox) {
+        data <- data[data$media > 0, ]
+      }
+      
+      
       # Compute the sums every five days
       fiveday_sums <- compute_sums_every_one_day(data)
       
@@ -963,7 +1261,12 @@ server <- function(input, output, session) {
           values = c("blue", "red"),
           labels = c("Positive", "Negative")
         ) +
-        theme_minimal()
+        theme_minimal() +
+        theme(
+          legend.position = "top",            # Set legend position to top
+          legend.justification = c(1, 0),     # Set legend justification to top right
+          legend.margin = margin(6, 6, 6, 6)  # Set margin around the legend
+        )
     })
     
     
@@ -1330,6 +1633,93 @@ server <- function(input, output, session) {
       # Load the necessary data (replace with your own data loading code)
       data <- global_trends
       
+      data <- data[data$misinformation >= input$misinfoSlider,]
+      
+      # Check if "Organisations" checkbox is checked
+      if (input$organisations_checkbox) {
+        data <- data[data$Organizations > 0, ]
+      }
+      
+      # Check if "Locations" checkbox is checked
+      if (input$locations_checkbox) {
+        data <- data[data$Locations > 0, ]
+      }
+      
+      # Check if "Symptoms" checkbox is checked
+      if (input$symptoms_checkbox) {
+        data <- data[data$Symptoms > 0, ]
+      }
+      
+      # Check if "COVID" checkbox is checked
+      if (input$covid_checkbox) {
+        data <- data[data$COVID > 0, ]
+      }
+      
+      # Check if "Vaccination" checkbox is checked
+      if (input$vaccination_checkbox) {
+        data <- data[data$Vaccination > 0, ]
+      }
+      
+      # Check if "Politics" checkbox is checked
+      if (input$politics_checkbox) {
+        data <- data[data$Politics > 0, ]
+      }
+      
+      # Check if "Conspiracy" checkbox is checked
+      if (input$conspiracy_checkbox) {
+        data <- data[data$Conspiracy > 0, ]
+      }
+      
+      # Check if "Slurs" checkbox is checked
+      if (input$slurs_checkbox) {
+        data <- data[data$Slurs > 0, ]
+      }
+      
+      # Check if "Masks" checkbox is checked
+      if (input$masks_checkbox) {
+        data <- data[data$Masks > 0, ]
+      }
+      
+      # Check if "Origin" checkbox is checked
+      if (input$origin_checkbox) {
+        data <- data[data$origin > 0, ]
+      }
+      
+      # Check if "Vaccine Conspiracy" checkbox is checked
+      if (input$vaccine_conspiracy_checkbox) {
+        data <- data[data$vaccine_conspiracy > 0, ]
+      }
+      
+      # Check if "Government" checkbox is checked
+      if (input$government_checkbox) {
+        data <- data[data$government > 0, ]
+      }
+      
+      # Check if "Pharma" checkbox is checked
+      if (input$pharma_checkbox) {
+        data <- data[data$pharma > 0, ]
+      }
+      
+      # Check if "Five_G" checkbox is checked
+      if (input$five_g_checkbox) {
+        data <- data[data$Five_G > 0, ]
+      }
+      
+      # Check if "Gates" checkbox is checked
+      if (input$gates_checkbox) {
+        data <- data[data$gates > 0, ]
+      }
+      
+      # Check if "NWO" checkbox is checked
+      if (input$nwo_checkbox) {
+        data <- data[data$nwo > 0, ]
+      }
+      
+      # Check if "Media" checkbox is checked
+      if (input$media_checkbox) {
+        data <- data[data$media > 0, ]
+      }
+      
       # Compute the sums every five days
       fiveday_sums <- compute_sums_every_thirty_days(data)
       
@@ -1368,10 +1758,14 @@ server <- function(input, output, session) {
         ) +
         scale_x_date(date_breaks = "3 months", date_labels = "%,b %Y") +
         scale_color_manual(
-          values = c("blue", "red"),
-          labels = c("Positive", "Negative","All")
+          values = c("blue", "red", "black"),    # Include "black" for the additional point
+          labels = c("Positive", "Negative", "All")
         ) +
-        theme_minimal()
+        theme_minimal() +
+        theme(
+          legend.position = "topright"            # Set legend position to top right
+        )
+      
     })
     
     
@@ -1398,6 +1792,51 @@ server <- function(input, output, session) {
       }
     })
     
+    # output$sentiment_neg_clusters <- renderPlot({
+    #   # Load the necessary data (replace with your own data loading code)
+    #   data <- sentiment_clusters
+    #   clusters = ClusterAnalysis(data)
+    #   negative_sentiments = clusters[[1]]
+    #   
+    #   EGA(negative_sentiments, cor = "spearman")
+    #   
+    # })
+    # 
+    # output$sentiment_neg_clusters_monthly <- renderPlot({
+    #   # Load the necessary data (replace with your own data loading code)
+    #   # Load the necessary data (replace with your own data loading code)
+    #   selected_date <- parse_date_time(input$selected_month, "b-y")
+    #   file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+    #   data <- get(file_name)
+    #   clusters = ClusterAnalysis(data)
+    #   negative_sentiments = clusters[[1]]
+    #   
+    #   EGA(negative_sentiments, cor = "spearman")
+    #   
+    # })
+    # 
+    # output$sentiment_pos_clusters <- renderPlot({
+    #   # Load the necessary data (replace with your own data loading code)
+    #   data <- sentiment_clusters
+    #   clusters = ClusterAnalysis(data)
+    #   
+    #   positive_sentiments = clusters[[2]]
+    #   
+    #   EGA(positive_sentiments, cor = "spearman")
+    # })
+    # 
+    # 
+    # output$sentiment_pos_clusters_monthly <- renderPlot({
+    #   # Load the necessary data (replace with your own data loading code)
+    #   # Load the necessary data (replace with your own data loading code)
+    #   selected_date <- parse_date_time(input$selected_month, "b-y")
+    #   file_name <- paste0("data_", format(selected_date, format = "%b_%Y"))
+    #   data <- get(file_name)
+    #   clusters = ClusterAnalysis(data)
+    #   negative_sentiments = clusters[[2]]
+    #   
+    #   EGA(negative_sentiments, cor = "spearman")
+    # })
     
     
   })
